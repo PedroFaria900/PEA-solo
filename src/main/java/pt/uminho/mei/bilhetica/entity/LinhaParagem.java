@@ -2,7 +2,6 @@ package pt.uminho.mei.bilhetica.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import pt.uminho.mei.bilhetica.enums.SentidoLinha;
 
 @Entity
 @Table(name = "linha_paragem")

@@ -3,7 +3,7 @@ package pt.uminho.mei.bilhetica.entity.leitor;
 import jakarta.persistence.*;
 import lombok.*;
 import pt.uminho.mei.bilhetica.entity.Linha;
-import pt.uminho.mei.bilhetica.enums.EstadoTitulo;
+import pt.uminho.mei.bilhetica.enums.EstadoLeitor;
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,5 +24,5 @@ public class LeitorMovel extends Leitor {
     private LocalDateTime ultimaActualizacao;
 
     @Enumerated(EnumType.STRING)
-    private EstadoTitulo estado;
+    private EstadoLeitor estado;
 }

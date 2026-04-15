@@ -19,7 +19,7 @@ public class TituloTransporte {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "utente_id", nullable = false)
     private Utente utente;
 
