@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Dataset - ficheiros grandes
+data/*.csv
+data/*.pickle
+data/*.sql
