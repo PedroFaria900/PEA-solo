@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: bilhetica-api
-          image: bilhetica-api:latest
+          image: bilhetica-api:v3
           imagePullPolicy: Never
           ports:
             - containerPort: 8080
@@ -35,10 +35,9 @@ kind: Service
 metadata:
   name: bilhetica-api
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: bilhetica-api
   ports:
     - port: 8080
       targetPort: 8080
-      nodePort: 30080
