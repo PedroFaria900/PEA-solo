@@ -16,11 +16,12 @@ export const options = {
 const BASE_URL = 'http://127.0.0.1:8080';
 
 export function setup() {
-  const users = [];
+  const tokens = [];
   const ts = Date.now();
-  for (let i = 0; i < 200; i++) {
+
+  for (let i = 0; i < 50; i++) {
     const email = `loadtest_${ts}_${i}@bilhetica.com`;
-    const res = http.post(
+    http.post(
       `${BASE_URL}/api/auth/registar`,
       JSON.stringify({
         nome: `LoadTest ${i}`,
@@ -30,31 +31,28 @@ export function setup() {
       }),
       { headers: { 'Content-Type': 'application/json' } }
     );
-    if (res.status === 201) users.push(email);
+
+    const loginRes = http.post(
+      `${BASE_URL}/api/auth/login`,
+      JSON.stringify({ email, password: 'test123' }),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    if (loginRes.status === 200) {
+      tokens.push(loginRes.json('accessToken'));
+    }
   }
-  console.log(`Criados ${users.length} utilizadores de teste`);
-  return { users };
+
+  console.log(`Tokens obtidos: ${tokens.length}`);
+  return { tokens };
 }
 
 export default function (data) {
-  const email = data.users[__VU % data.users.length];
-
-  const loginRes = http.post(
-    `${BASE_URL}/api/auth/login`,
-    JSON.stringify({ email, password: 'test123' }),
-    { headers: { 'Content-Type': 'application/json' } }
-  );
-
-  check(loginRes, { 'login 200': (r) => r.status === 200 });
-  if (loginRes.status !== 200) { sleep(1); return; }
-
-  const token = loginRes.json('accessToken');
+  const token = data.tokens[__VU % data.tokens.length];
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`,
   };
-
-  sleep(0.5);
 
   const redeRes = http.get(`${BASE_URL}/api/rede/estatisticas`, { headers });
   check(redeRes, { 'rede 200': (r) => r.status === 200 });

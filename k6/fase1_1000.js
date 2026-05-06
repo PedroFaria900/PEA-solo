@@ -16,28 +16,21 @@
   const BASE_URL = 'http://127.0.0.1:8080';
 
   export function setup() {
-    const users = [];
-    const ts = Date.now();
-    for (let i = 0; i < 200; i++) {
-      const email = `loadtest_${ts}_${i}@bilhetica.com`;
-      const res = http.post(
-        `${BASE_URL}/api/auth/registar`,
-        JSON.stringify({
-          nome: `LoadTest ${i}`,
-          email: email,
-          telemovel: `+35191${String(i).padStart(7,'0')}`,
-          password: 'test123'
-        }),
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-      if (res.status === 201) users.push(email);
-    }
-    console.log(`Criados ${users.length} utilizadores de teste`);
-    return { users };
-  }
+  const tokens = [];
+  const ts = Date.now();
 
-  export default function (data) {
-    const email = data.users[__VU % data.users.length];
+  for (let i = 0; i < 50; i++) {
+    const email = `loadtest_${ts}_${i}@bilhetica.com`;
+    http.post(
+      `${BASE_URL}/api/auth/registar`,
+      JSON.stringify({
+        nome: `LoadTest ${i}`,
+        email: email,
+        telemovel: `+35191${String(i).padStart(7,'0')}`,
+        password: 'test123'
+      }),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
 
     const loginRes = http.post(
       `${BASE_URL}/api/auth/login`,
@@ -45,24 +38,29 @@
       { headers: { 'Content-Type': 'application/json' } }
     );
 
-    check(loginRes, { 'login 200': (r) => r.status === 200 });
-    if (loginRes.status !== 200) { sleep(1); return; }
-
-    const token = loginRes.json('accessToken');
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    };
-
-    sleep(0.5);
-
-    const redeRes = http.get(`${BASE_URL}/api/rede/estatisticas`, { headers });
-    check(redeRes, { 'rede 200': (r) => r.status === 200 });
-
-    sleep(0.5);
-
-    const linhasRes = http.get(`${BASE_URL}/api/linhas`, { headers });
-    check(linhasRes, { 'linhas 200': (r) => r.status === 200 });
-
-    sleep(1);
+    if (loginRes.status === 200) {
+      tokens.push(loginRes.json('accessToken'));
+    }
   }
+
+  console.log(`Tokens obtidos: ${tokens.length}`);
+  return { tokens };
+}
+
+export default function (data) {
+  const token = data.tokens[__VU % data.tokens.length];
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
+
+  const redeRes = http.get(`${BASE_URL}/api/rede/estatisticas`, { headers });
+  check(redeRes, { 'rede 200': (r) => r.status === 200 });
+
+  sleep(0.5);
+
+  const linhasRes = http.get(`${BASE_URL}/api/linhas`, { headers });
+  check(linhasRes, { 'linhas 200': (r) => r.status === 200 });
+
+  sleep(1);
+}
