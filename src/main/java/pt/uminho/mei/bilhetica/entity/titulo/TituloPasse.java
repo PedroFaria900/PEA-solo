@@ -5,15 +5,17 @@ import lombok.*;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "titulo_passe")
+@DiscriminatorValue("PASSE")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class TituloPasse extends TituloTransporte {
 
-    @Column(nullable = false)
+    @Column
     private LocalDate validade;
 
-    private String areaGeografica;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "zona_id")
+    private pt.uminho.mei.bilhetica.entity.ZonaTarifaria zona;
 }

@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: bilhetica-api
-          image: bilhetica-api:v3
+          image: bilhetica-api:dev
           imagePullPolicy: Never
           ports:
             - containerPort: 8080

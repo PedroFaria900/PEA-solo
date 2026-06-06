@@ -2,6 +2,8 @@ package pt.uminho.mei.bilhetica.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import pt.uminho.mei.bilhetica.enums.PerfilUtente;
+
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -31,4 +33,12 @@ public class Utente {
     @Column(nullable = false, precision = 10, scale = 2)
     @Builder.Default
     private BigDecimal saldo = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private PerfilUtente perfil = PerfilUtente.NORMAL;
+
+    @Version
+    private Long version;
 }

@@ -5,12 +5,14 @@ import lombok.*;
 import pt.uminho.mei.bilhetica.entity.leitor.Leitor;
 import pt.uminho.mei.bilhetica.entity.titulo.TituloTransporte;
 import pt.uminho.mei.bilhetica.enums.ResultadoValidacao;
-import pt.uminho.mei.bilhetica.enums.TipoEvento;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "validacao")
+@Table(name = "validacao", indexes = {
+    @Index(name = "idx_validacao_titulo_momento", columnList = "titulo_id, momento"),
+    @Index(name = "idx_validacao_leitor_momento", columnList = "leitor_id, momento")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -29,18 +31,10 @@ public class Validacao {
     @JoinColumn(name = "leitor_id", nullable = false)
     private Leitor leitor;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "paragem_id", nullable = false)
-    private Paragem paragem;
-
     @Column(nullable = false)
     private LocalDateTime momento;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ResultadoValidacao resultado;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TipoEvento tipoEvento;
 }

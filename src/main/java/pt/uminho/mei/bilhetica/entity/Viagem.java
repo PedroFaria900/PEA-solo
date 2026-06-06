@@ -6,7 +6,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "viagem")
+@Table(name = "viagem", indexes = {
+    @Index(name = "idx_viagem_validacao", columnList = "validacao_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,15 +20,9 @@ public class Viagem {
     private UUID id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "val_entrada_id", nullable = false)
-    private Validacao valEntrada;
-
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "val_saida_id")
-    private Validacao valSaida;
+    @JoinColumn(name = "validacao_id", nullable = false)
+    private Validacao validacao;
 
     @Column(nullable = false)
-    private LocalDateTime inicio;
-
-    private LocalDateTime fim;
+    private LocalDateTime momento;
 }

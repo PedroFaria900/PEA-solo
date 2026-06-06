@@ -51,24 +51,12 @@ public class EstatisticasService {
                 .mapToLong(r -> ((Number) r[1]).longValue())
                 .average().orElse(0);
 
-        List<Object[]> topLinhasRaw = viagemRepository
-            .topLinhasParaParagem(paragemId, desde24h);
-
-        List<EstatisticasParagemResponse.LinhaAfluenciaDTO> topLinhas =
-            topLinhasRaw.stream()
-                .limit(3)
-                .map(r -> EstatisticasParagemResponse.LinhaAfluenciaDTO.builder()
-                    .linhaDesignacao((String) r[0])
-                    .totalViagens(((Number) r[1]).longValue())
-                    .build())
-                .collect(Collectors.toList());
-
         return EstatisticasParagemResponse.builder()
             .paragemNome(paragem.getNome())
             .totalValidacoes24h(total24h)
             .horaPico(horaPico)
             .mediaValidacoesPorHora(Math.round(media * 10.0) / 10.0)
-            .topLinhas(topLinhas)
+            .topLinhas(List.of())
             .build();
     }
 
@@ -80,16 +68,6 @@ public class EstatisticasService {
 
         Long totalViagens = viagemRepository
             .countByLinhaIdSince(linhaId, desde);
-
-        List<Object[]> origens = viagemRepository
-            .topOrigensParaLinha(linhaId, desde);
-        String origemMaisFrequente = origens.isEmpty()
-            ? null : (String) origens.get(0)[0];
-
-        List<Object[]> destinos = viagemRepository
-            .topDestinosParaLinha(linhaId, desde);
-        String destinoMaisFrequente = destinos.isEmpty()
-            ? null : (String) destinos.get(0)[0];
 
         List<Object[]> porHora = validacaoRepository
             .countByHourForRede(desde);
@@ -105,8 +83,8 @@ public class EstatisticasService {
         return EstatisticasLinhaResponse.builder()
             .linhaDesignacao(linha.getDesignacao())
             .totalViagensUltimoMes(totalViagens)
-            .paragemOrigemMaisFrequente(origemMaisFrequente)
-            .paragemDestinoMaisFrequente(destinoMaisFrequente)
+            .paragemOrigemMaisFrequente(null)
+            .paragemDestinoMaisFrequente(null)
             .distribuicaoPorHora(distribuicao)
             .build();
     }
@@ -127,17 +105,6 @@ public class EstatisticasService {
         Integer horaPico = porHora.isEmpty() ? null
             : ((Number) porHora.get(0)[0]).intValue();
 
-        List<Object[]> topParagensRaw = viagemRepository
-            .topParagensMaisMovimentadas(desde30dias);
-        List<EstatisticasRedeResponse.ParagemAfluenciaDTO> topParagens =
-            topParagensRaw.stream()
-                .limit(5)
-                .map(r -> EstatisticasRedeResponse.ParagemAfluenciaDTO.builder()
-                    .paragemNome((String) r[0])
-                    .totalValidacoes(((Number) r[1]).longValue())
-                    .build())
-                .collect(Collectors.toList());
-
         List<Object[]> topLinhasRaw = viagemRepository
             .topLinhasMaisMovimentadas(desde30dias);
         List<EstatisticasRedeResponse.LinhaAfluenciaDTO> topLinhas =
@@ -150,7 +117,7 @@ public class EstatisticasService {
                 .collect(Collectors.toList());
 
         return EstatisticasRedeResponse.builder()
-            .topParagens(topParagens)
+            .topParagens(List.of())
             .topLinhas(topLinhas)
             .totalViagensHoje(totalHoje)
             .totalViagensOntem(totalOntem)

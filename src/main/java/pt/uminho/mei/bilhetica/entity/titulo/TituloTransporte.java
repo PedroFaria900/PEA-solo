@@ -9,7 +9,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "titulo_transporte")
-@Inheritance(strategy = InheritanceType.JOINED)
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "tipo_titulo", discriminatorType = DiscriminatorType.STRING)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -30,4 +31,7 @@ public class TituloTransporte {
     private String tokenAtivo;
 
     private LocalDateTime tokenExpiraEm;
+
+    @Version
+    private Long version;
 }

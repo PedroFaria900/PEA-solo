@@ -2,18 +2,18 @@ package pt.uminho.mei.bilhetica.entity.leitor;
 
 import jakarta.persistence.*;
 import lombok.*;
-import pt.uminho.mei.bilhetica.enums.TipoLeitor;
-import pt.uminho.mei.bilhetica.enums.SentidoLeitor;
+import pt.uminho.mei.bilhetica.entity.Linha;
+import pt.uminho.mei.bilhetica.enums.EstadoLeitor;
 import java.util.UUID;
 
 @Entity
 @Table(name = "leitor")
-@Inheritance(strategy = InheritanceType.JOINED)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Leitor {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -21,11 +21,13 @@ public class Leitor {
     @Column(nullable = false, unique = true)
     private String codigo;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TipoLeitor tipo;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "linha_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Linha linha;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private SentidoLeitor sentido;
+    private EstadoLeitor estado;
 }

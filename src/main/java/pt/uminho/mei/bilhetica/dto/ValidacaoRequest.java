@@ -9,7 +9,4 @@ import java.util.UUID;
 public class ValidacaoRequest {
     private String token;
     private UUID leitorId;
-    private String tipoEvento;
-    private Double latitude;
-    private Double longitude;
 }

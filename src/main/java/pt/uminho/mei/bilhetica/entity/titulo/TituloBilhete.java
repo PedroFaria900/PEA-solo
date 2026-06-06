@@ -2,25 +2,28 @@ package pt.uminho.mei.bilhetica.entity.titulo;
 
 import jakarta.persistence.*;
 import lombok.*;
-import pt.uminho.mei.bilhetica.entity.Paragem;
 import java.time.LocalDate;
+import java.util.Set;
+import pt.uminho.mei.bilhetica.entity.ZonaTarifaria;
 
 @Entity
-@Table(name = "titulo_bilhete")
+@DiscriminatorValue("BILHETE")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class TituloBilhete extends TituloTransporte {
 
-    @Column(nullable = false)
+    @Column
     private LocalDate validade;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "paragem_origem_id")
-    private Paragem paragemOrigem;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "paragem_destino_id")
-    private Paragem paragemDestino;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "titulo_bilhete_zona",
+        joinColumns = @JoinColumn(name = "titulo_bilhete_id"),
+        inverseJoinColumns = @JoinColumn(name = "zona_id")
+    )
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    private Set<ZonaTarifaria> zonas;
 }

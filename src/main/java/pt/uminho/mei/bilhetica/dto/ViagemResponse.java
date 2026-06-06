@@ -10,9 +10,6 @@ import java.util.UUID;
 @Builder
 public class ViagemResponse {
     private UUID id;
-    private LocalDateTime inicio;
-    private LocalDateTime fim;
-    private String paragemOrigem;
-    private String paragemDestino;
+    private LocalDateTime momento;
     private String linha;
 }

@@ -1,10 +1,14 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
+// Accept VUs dynamically from the environment, defaulting to 100
+const TARGET_VUS = __ENV.VUS ? parseInt(__ENV.VUS) : 100;
+
 export const options = {
+  setupTimeout: '10m', // Give setup 10 minutes to generate all tokens
   stages: [
-    { duration: '30s', target: 100 },
-    { duration: '2m',  target: 100 },
+    { duration: '30s', target: TARGET_VUS },
+    { duration: '2m',  target: TARGET_VUS },
     { duration: '30s', target: 0 },
   ],
   thresholds: {
@@ -18,10 +22,12 @@ const BASE_URL = 'http://127.0.0.1:8080';
 export function setup() {
   const tokens = [];
   const ts = Date.now();
+  // Also allow parameterizing the number of tokens to match VUs if you wish
+  const NUM_TOKENS = __ENV.TOKENS ? parseInt(__ENV.TOKENS) : 50;
 
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < NUM_TOKENS; i++) {
     const email = `loadtest_${ts}_${i}@bilhetica.com`;
-    http.post(
+    const registarRes = http.post(
       `${BASE_URL}/api/auth/registar`,
       JSON.stringify({
         nome: `LoadTest ${i}`,
@@ -31,6 +37,11 @@ export function setup() {
       }),
       { headers: { 'Content-Type': 'application/json' } }
     );
+    
+    // Surface registration failures to the console so you know if setup is broken
+    if (registarRes.status !== 200 && registarRes.status !== 201) {
+       console.warn(`Failed to register user ${email}. Status: ${registarRes.status}`);
+    }
 
     const loginRes = http.post(
       `${BASE_URL}/api/auth/login`,
@@ -54,13 +65,19 @@ export default function (data) {
     'Authorization': `Bearer ${token}`,
   };
 
-  const redeRes = http.get(`${BASE_URL}/api/rede/estatisticas`, { headers });
+  const redeRes = http.get(`${BASE_URL}/api/rede/estatisticas`, {
+    headers,
+    tags: { endpoint: 'rede' }
+});
   check(redeRes, { 'rede 200': (r) => r.status === 200 });
 
-  sleep(0.5);
+  //sleep(0.5);
 
-  const linhasRes = http.get(`${BASE_URL}/api/linhas`, { headers });
+  const linhasRes = http.get(`${BASE_URL}/api/linhas`, {
+    headers,
+    tags: { endpoint: 'linhas' }
+  });
   check(linhasRes, { 'linhas 200': (r) => r.status === 200 });
 
-  sleep(1);
+  sleep(0.5);
 }

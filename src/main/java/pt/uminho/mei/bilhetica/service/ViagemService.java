@@ -3,7 +3,6 @@ package pt.uminho.mei.bilhetica.service;
 import org.springframework.stereotype.Service;
 import pt.uminho.mei.bilhetica.dto.ViagemResponse;
 import pt.uminho.mei.bilhetica.entity.Viagem;
-import pt.uminho.mei.bilhetica.entity.leitor.LeitorFixo;
 import pt.uminho.mei.bilhetica.repository.UtenteRepository;
 import pt.uminho.mei.bilhetica.repository.ViagemRepository;
 
@@ -39,28 +38,16 @@ public class ViagemService {
     }
 
     private ViagemResponse toResponse(Viagem v) {
-        String origem = null, destino = null, linha = null;
-
-        if (v.getValEntrada() != null
-                && v.getValEntrada().getParagem() != null) {
-            origem = v.getValEntrada().getParagem().getNome();
-        }
-        if (v.getValSaida() != null
-                && v.getValSaida().getParagem() != null) {
-            destino = v.getValSaida().getParagem().getNome();
-        }
-        if (v.getValEntrada() != null
-                && v.getValEntrada().getLeitor() instanceof LeitorFixo fixo
-                && fixo.getParagem() != null) {
-            linha = "N/A";
+        String linha = null;
+        if (v.getValidacao() != null
+                && v.getValidacao().getLeitor() != null
+                && v.getValidacao().getLeitor().getLinha() != null) {
+            linha = v.getValidacao().getLeitor().getLinha().getDesignacao();
         }
 
         return ViagemResponse.builder()
             .id(v.getId())
-            .inicio(v.getInicio())
-            .fim(v.getFim())
-            .paragemOrigem(origem)
-            .paragemDestino(destino)
+            .momento(v.getMomento())
             .linha(linha)
             .build();
     }
