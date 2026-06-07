@@ -37,3 +37,6 @@ data/*.csv
 data/*.pickle
 data/*.sql
 k6_results/
+
+# Python virtual environment
+.venv/
