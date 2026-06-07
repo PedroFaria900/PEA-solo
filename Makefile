@@ -26,7 +26,7 @@ MINIKUBE_CPUS := 2
         dev dev-infra dev-api dev-stop \
         build release \
         k8s-start k8s-deploy k8s-status k8s-tunnel k8s-stop \
-        seed-generate seed-local seed-k8s \
+        seed-generate seed-local seed-k8s pip-install \
         indexes-local indexes-k8s \
         test-user \
         k6-fase1 k6-fase2 k6-fase3 k6-validacao k6-all \
@@ -150,9 +150,15 @@ k8s-stop: ## Delete all k8s resources and stop Minikube
 # DATA SEEDING
 # ══════════════════════════════════════════════════════════════
 
-seed-generate: ## Generate data/seed.sql from the UrbanBus dataset
+pip-install: ## Create .venv and install Python dependencies
+	@echo "📦 Setting up Python virtual environment..."
+	@test -d .venv || python3 -m venv .venv
+	.venv/bin/pip install -r requirements.txt -q
+	@echo "✅ Python dependencies installed"
+
+seed-generate: pip-install ## Generate data/seed.sql from the UrbanBus dataset
 	@echo "🔄 Generating seed.sql..."
-	python data/converter.py
+	.venv/bin/python data/converter.py
 	@echo "✅ data/seed.sql generated"
 
 seed-local: seed-generate ## Seed the local PostgreSQL (docker-compose)
