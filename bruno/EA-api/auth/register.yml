@@ -5,13 +5,13 @@ info:
 
 http:
   method: POST
-  url: "{{baseUrl}}/api/auth/registar"
+  url: "{{baseUrl}}/api/auth/register"
   body:
     type: json
     data: |-
       {
         "nome": "João Silva",
-        "email": "joao@example.com",
+        "email": "maria@email.com",
         "telemovel": "912345678",
         "password": "password123"
       }
