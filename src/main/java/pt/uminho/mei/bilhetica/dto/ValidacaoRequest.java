@@ -7,6 +7,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ValidacaoRequest {
-    private String token;
+    private UUID tituloId;
     private UUID leitorId;
 }

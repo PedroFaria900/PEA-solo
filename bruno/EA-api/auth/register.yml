@@ -1,0 +1,24 @@
+info:
+  name: register
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/auth/registar"
+  body:
+    type: json
+    data: |-
+      {
+        "nome": "João Silva",
+        "email": "joao@example.com",
+        "telemovel": "912345678",
+        "password": "password123"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

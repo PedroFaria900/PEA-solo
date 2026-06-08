@@ -45,4 +45,16 @@ public class RedeController {
             @RequestParam UUID destinoId) {
         return ResponseEntity.ok(redeService.sugerirRota(origemId, destinoId));
     }
+
+    @GetMapping("/paragens/{id}/horarios")
+    public ResponseEntity<String> horarios(@PathVariable UUID id) {
+        return ResponseEntity.status(501).body("Under Construction: Timetables will be implemented here.");
+    }
+
+    @GetMapping("/rotas/pesquisar")
+    public ResponseEntity<String> pesquisarRotas(
+            @RequestParam("origem") UUID origem,
+            @RequestParam("destino") UUID destino) {
+        return ResponseEntity.status(501).body("Under Construction: Trip Planner will be implemented here.");
+    }
 }

@@ -39,7 +39,10 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/validacoes").permitAll()
+                .requestMatchers("/api/catalogo/**").permitAll()
+                .requestMatchers("/api/linhas/**").permitAll()
+                .requestMatchers("/api/paragens/**").permitAll()
+                .requestMatchers("/api/rotas/**").permitAll()
                 .anyRequest().authenticated())
             .addFilterBefore(jwtFilter,
                 UsernamePasswordAuthenticationFilter.class);

@@ -1,0 +1,22 @@
+info:
+  name: add-balance
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/carteira/carregamentos"
+  body:
+    type: json
+    data: |-
+      {
+        "valor": 10.50
+      }
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

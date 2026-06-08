@@ -24,7 +24,7 @@ public class AuthController {
         this.jwtUtil = jwtUtil;
     }
 
-    @PostMapping("/registar")
+    @PostMapping("/register")
     public ResponseEntity<?> registar(@RequestBody RegistarRequest request) {
         utenteService.registar(
             request.getNome(),

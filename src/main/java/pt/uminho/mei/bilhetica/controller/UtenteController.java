@@ -40,30 +40,5 @@ public class UtenteController {
         ));
     }
 
-    @PostMapping("/carregar-saldo")
-    public ResponseEntity<?> carregarSaldo(
-            @AuthenticationPrincipal UserDetails user,
-            @RequestBody Map<String, BigDecimal> body) {
 
-        BigDecimal valor = body.get("valor");
-        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Valor inválido");
-        }
-
-        Utente utente = utenteRepository.findByEmail(user.getUsername())
-            .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
-
-        utente.setSaldo(utente.getSaldo().add(valor));
-        utenteRepository.save(utente);
-
-        transacaoRepository.save(Transacao.builder()
-            .utente(utente)
-            .valor(valor)
-            .tipo(TipoTransacao.CARREGAMENTO)
-            .momento(LocalDateTime.now())
-            .descricao("Carregamento de saldo")
-            .build());
-
-        return ResponseEntity.ok(Map.of("saldo", utente.getSaldo()));
-    }
 }

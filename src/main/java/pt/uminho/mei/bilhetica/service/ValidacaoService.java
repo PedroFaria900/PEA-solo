@@ -41,23 +41,18 @@ public class ValidacaoService {
     }
 
     @Transactional
-    public ValidacaoResponse processar(ValidacaoRequest request) {
+    public ValidacaoResponse processar(ValidacaoRequest request, String email) {
 
-        // 1. Verificar token no Redis
-        String tituloIdStr = redisTemplate.opsForValue()
-            .get("token:" + request.getToken());
+        // 1. Carregar título e verificar ownership
+        TituloTransporte titulo = tituloRepository.findById(request.getTituloId())
+            .orElseThrow(() -> new RuntimeException("Título não encontrado"));
 
-        if (tituloIdStr == null) {
+        if (!titulo.getUtente().getEmail().equals(email)) {
             return ValidacaoResponse.builder()
                 .resultado(ResultadoValidacao.INVALIDO)
-                .mensagem("Token inválido ou expirado")
+                .mensagem("Não autorizado a usar este título")
                 .build();
         }
-
-        // 2. Carregar título e leitor
-        UUID tituloId = UUID.fromString(tituloIdStr);
-        TituloTransporte titulo = tituloRepository.findById(tituloId)
-            .orElseThrow(() -> new RuntimeException("Título não encontrado"));
 
         Leitor leitor = leitorRepository.findById(request.getLeitorId())
             .orElseThrow(() -> new RuntimeException("Leitor não encontrado"));
@@ -106,8 +101,7 @@ public class ValidacaoService {
             .build();
         Viagem viagemSalva = viagemRepository.save(viagem);
 
-        // 9. Invalidar token
-        redisTemplate.delete("token:" + request.getToken());
+
 
         return ValidacaoResponse.builder()
             .validacaoId(validacao.getId())

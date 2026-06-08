@@ -33,7 +33,7 @@ public class TituloController {
         return ResponseEntity.ok(tituloService.detalhe(id));
     }
 
-    @PostMapping("/comprar")
+    @PostMapping
     public ResponseEntity<TituloResponse> comprar(
             @AuthenticationPrincipal UserDetails user,
             @RequestBody ComprarTituloRequest request) {
