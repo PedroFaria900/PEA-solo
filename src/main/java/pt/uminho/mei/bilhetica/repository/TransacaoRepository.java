@@ -5,4 +5,5 @@ import pt.uminho.mei.bilhetica.entity.Transacao;
 import java.util.UUID;
 
 public interface TransacaoRepository extends JpaRepository<Transacao, UUID> {
+    java.util.List<Transacao> findByUtenteIdOrderByMomentoDesc(UUID utenteId);
 }

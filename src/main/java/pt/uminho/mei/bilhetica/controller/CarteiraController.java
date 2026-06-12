@@ -61,4 +61,22 @@ public class CarteiraController {
 
         return ResponseEntity.ok(Map.of("saldo", utente.getSaldo()));
     }
+
+    @GetMapping("/transacoes")
+    public ResponseEntity<?> obterTransacoes(@AuthenticationPrincipal UserDetails user) {
+        Utente utente = utenteRepository.findByEmail(user.getUsername())
+            .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
+
+        return ResponseEntity.ok(transacaoRepository.findByUtenteIdOrderByMomentoDesc(utente.getId()).stream()
+            .map(t -> {
+                java.util.Map<String, Object> map = new java.util.HashMap<>();
+                map.put("id", t.getId());
+                map.put("valor", t.getValor());
+                map.put("tipo", t.getTipo());
+                map.put("momento", t.getMomento());
+                map.put("descricao", t.getDescricao() != null ? t.getDescricao() : "");
+                return map;
+            })
+            .collect(java.util.stream.Collectors.toList()));
+    }
 }

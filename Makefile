@@ -24,6 +24,7 @@ MINIKUBE_CPUS := 2
 # ── Phony targets ────────────────────────────────────────────
 .PHONY: help \
         dev dev-infra dev-api dev-stop \
+        frontend-install frontend-dev \
         build release \
         k8s-start k8s-deploy k8s-status k8s-tunnel k8s-stop \
         seed-generate seed-local seed-k8s pip-install \
@@ -70,6 +71,12 @@ dev: dev-infra ## Start infra + backend (blocking — runs API in foreground)
 dev-stop: ## Stop local PostgreSQL + Redis
 	docker compose down
 	@echo "✅ Local infrastructure stopped"
+
+frontend-install: ## Install frontend dependencies
+	cd frontend && npm install
+
+frontend-dev: ## Start the Vue PWA frontend development server
+	cd frontend && npm run dev
 
 # ══════════════════════════════════════════════════════════════
 # DOCKER BUILD

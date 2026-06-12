@@ -16,13 +16,16 @@ public class RedeService {
     private final LinhaRepository linhaRepository;
     private final ParagemRepository paragemRepository;
     private final LinhaParagemRepository linhaParagemRepository;
+    private final LeitorRepository leitorRepository;
 
     public RedeService(LinhaRepository linhaRepository,
                        ParagemRepository paragemRepository,
-                       LinhaParagemRepository linhaParagemRepository) {
+                       LinhaParagemRepository linhaParagemRepository,
+                       LeitorRepository leitorRepository) {
         this.linhaRepository = linhaRepository;
         this.paragemRepository = paragemRepository;
         this.linhaParagemRepository = linhaParagemRepository;
+        this.leitorRepository = leitorRepository;
     }
 
     public List<LinhaResponse> listarLinhas(TipoTransporte tipo) {
@@ -129,5 +132,32 @@ public class RedeService {
         }
 
         return rotas;
+    }
+
+    public List<Map<String, Object>> listarLeitores() {
+        return leitorRepository.findAll().stream()
+            .map(l -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", l.getId());
+                map.put("codigo", l.getCodigo());
+                map.put("estado", l.getEstado());
+                map.put("linhaId", l.getLinha() != null ? l.getLinha().getId() : null);
+                map.put("linhaNome", l.getLinha() != null ? l.getLinha().getDesignacao() : "");
+                return map;
+            })
+            .collect(Collectors.toList());
+    }
+
+    public List<ParagemResponse> listarParagens() {
+        return paragemRepository.findAll().stream()
+            .map(p -> ParagemResponse.builder()
+                .id(p.getId())
+                .nome(p.getNome())
+                .codigo(p.getCodigo())
+                .municipio(p.getMunicipio())
+                .latitude(p.getLatitude())
+                .longitude(p.getLongitude())
+                .build())
+            .collect(Collectors.toList());
     }
 }

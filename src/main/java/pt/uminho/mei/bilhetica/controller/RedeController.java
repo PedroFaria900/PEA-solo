@@ -57,4 +57,14 @@ public class RedeController {
             @RequestParam("destino") UUID destino) {
         return ResponseEntity.status(501).body("Under Construction: Trip Planner will be implemented here.");
     }
+
+    @GetMapping("/leitores")
+    public ResponseEntity<?> listarLeitores() {
+        return ResponseEntity.ok(redeService.listarLeitores());
+    }
+
+    @GetMapping("/paragens")
+    public ResponseEntity<?> listarParagens() {
+        return ResponseEntity.ok(redeService.listarParagens());
+    }
 }
