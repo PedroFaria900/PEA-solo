@@ -156,9 +156,9 @@ pip-install: ## Create .venv and install Python dependencies
 	.venv/bin/pip install -r requirements.txt -q
 	@echo "✅ Python dependencies installed"
 
-seed-generate: pip-install ## Generate data/seed.sql from the UrbanBus dataset
-	@echo "🔄 Generating seed.sql..."
-	.venv/bin/python data/converter.py
+seed-generate: pip-install ## Generate data/seed.sql — default: 5000 rows. Override: make seed-generate SEED_ROWS=1000000
+	@echo "🔄 Generating seed.sql (SEED_ROWS=$(or $(SEED_ROWS),5000), NUM_UTENTES=$(or $(NUM_UTENTES),200))..."
+	SEED_ROWS=$(or $(SEED_ROWS),5000) NUM_UTENTES=$(or $(NUM_UTENTES),200) .venv/bin/python data/converter.py
 	@echo "✅ data/seed.sql generated"
 
 seed-local: seed-generate ## Seed the local PostgreSQL (docker-compose)

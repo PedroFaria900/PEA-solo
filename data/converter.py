@@ -2,9 +2,17 @@ import pandas as pd
 import pickle
 import uuid
 import random
+import os
 from datetime import datetime
 
+# ── CONFIG ────────────────────────────────────────────────────────────────
+SEED_ROWS = int(os.environ.get('SEED_ROWS', 5_000))
+NUM_UTENTES = int(os.environ.get('NUM_UTENTES', 200))
+
+print(f"Config: SEED_ROWS={SEED_ROWS}, NUM_UTENTES={NUM_UTENTES}")
 print("A carregar ficheiros...")
+
+# ── LOAD DATA ─────────────────────────────────────────────────────────────
 stops_df = pd.read_csv('data/BusStopList.csv')
 
 routes = {}
@@ -13,21 +21,21 @@ try:
         routes = pickle.load(f)
 except FileNotFoundError:
     print("Aviso: data/BusRoutes.pickle não encontrado. A gerar linhas fictícias.")
-    # Dummy data for routes so the rest of the script doesn't crash
     routes = {'SER_DUMMY': pd.DataFrame([{'Stop_stn': s} for s in stops_df['BUS_STOP'].head(10).tolist()])}
 
 try:
-    trans_df = pd.read_csv('data/BUS_DATA_OCT_2017.csv', nrows=50000)
+    trans_df = pd.read_csv('data/BUS_DATA_OCT_2017.csv', nrows=SEED_ROWS)
 except FileNotFoundError:
     print("Aviso: data/BUS_DATA_OCT_2017.csv não encontrado. A gerar transações fictícias.")
     trans_df = pd.DataFrame({
         'Card_Number': ['DUMMY_CARD_1', 'DUMMY_CARD_2'],
-        'Boarding_stop_stn': stops_df['BUS_STOP'].iloc[0],
-        'Alighting_stop_stn': stops_df['BUS_STOP'].iloc[1],
-        'Ride_start_date': '2017-10-01',
-        'Ride_start_time': '08:00:00',
-        'Ride_end_date': '2017-10-01',
-        'Ride_end_time': '08:30:00'
+        'Boarding_stop_stn': [stops_df['BUS_STOP'].iloc[0], stops_df['BUS_STOP'].iloc[1]],
+        'Alighting_stop_stn': [stops_df['BUS_STOP'].iloc[1], stops_df['BUS_STOP'].iloc[0]],
+        'Ride_start_date': ['2017-10-01', '2017-10-01'],
+        'Ride_start_time': ['08:00:00', '09:00:00'],
+        'Ride_end_date': ['2017-10-01', '2017-10-01'],
+        'Ride_end_time': ['08:30:00', '09:30:00'],
+        'Bus_Service_Number': ['SER_DUMMY', 'SER_DUMMY'],
     })
 print("Ficheiros carregados.")
 
@@ -81,24 +89,24 @@ for route_code, df in routes.items():
 
 print(f"Linhas: {len(route_id_map)}")
 
-# ── UTENTES ───────────────────────────────────────────────────────────────
+# ── UTENTES (synthetic pool, decoupled from card numbers) ─────────────────
 lines.append("\n-- UTENTES")
 lines.append("TRUNCATE utente CASCADE;")
-card_ids = trans_df['Card_Number'].unique()
-utente_map = {}  # card_number -> uuid
 
-for card in card_ids:
+utente_ids = []  # list of (uuid, perfil)
+for i in range(NUM_UTENTES):
     uid = str(uuid.uuid4())
-    utente_map[card] = uid
-    email = f"utente_{card}@urbanbus.com"
+    email = f"utente_{i}@urbanbus.com"
+    nome = f"Utente {i}"
     perfil = random.choices(['NORMAL', 'ESTUDANTE', 'SENIOR'], weights=[80, 15, 5])[0]
+    utente_ids.append((uid, perfil))
     lines.append(
         f"INSERT INTO utente (id, nome, email, password_hash, saldo, perfil, version) "
-        f"VALUES ('{uid}', 'Utente {card}', '{email}', "
+        f"VALUES ('{uid}', '{nome}', '{email}', "
         f"'$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LzTfztsgEMO', 0.00, '{perfil}', 0);"
     )
 
-print(f"Utentes: {len(utente_map)}")
+print(f"Utentes: {NUM_UTENTES}")
 
 # ── ZONAS TARIFARIAS ──────────────────────────────────────────────────────
 lines.append("\n-- ZONAS TARIFARIAS")
@@ -137,13 +145,7 @@ lines.append(f"INSERT INTO tarifario (id, tipo_titulo, perfil_utente, zona_id, p
 lines.append(f"INSERT INTO tarifario (id, tipo_titulo, perfil_utente, zona_id, preco) VALUES ('{uuid.uuid4()}', 'PACK', 'ESTUDANTE', NULL, 1.00);")
 lines.append(f"INSERT INTO tarifario (id, tipo_titulo, perfil_utente, zona_id, preco) VALUES ('{uuid.uuid4()}', 'PACK', 'SENIOR', NULL, 1.00);")
 
-# ── TITULOS, VALIDACOES E VIAGENS ─────────────────────────────────────────
-lines.append("\n-- TITULOS TRANSPORTE")
-lines.append("TRUNCATE titulo_transporte CASCADE;")
-lines.append("TRUNCATE validacao CASCADE;")
-lines.append("TRUNCATE viagem CASCADE;")
-
-# ── LEITORES (2-4 por linha) ─────────────────────────────────────────────
+# ── LEITORES (2-4 per line) ──────────────────────────────────────────────
 lines.append("\n-- LEITORES")
 lines.append("TRUNCATE leitor CASCADE;")
 leitor_map = {}  # route_code -> [leitor_id, ...]
@@ -160,50 +162,66 @@ for route_code, rid in route_id_map.items():
             f"VALUES ('{lid}', '{codigo}', '{rid}', 'ACTIVO');"
         )
 
-lines.append("\n-- TITULOS, VALIDACOES E VIAGENS")
+# ── TITULOS (one per user) ───────────────────────────────────────────────
+lines.append("\n-- TITULOS TRANSPORTE")
+lines.append("TRUNCATE titulo_transporte CASCADE;")
+lines.append("TRUNCATE validacao CASCADE;")
+lines.append("TRUNCATE viagem CASCADE;")
 
-skipped = 0
-processed = 0
-
-for _, row in trans_df.iterrows():
-    card = row['Card_Number']
-    boarding = row['Boarding_stop_stn']
-    alighting = row['Alighting_stop_stn']
-
-    if boarding not in stop_id_map or alighting not in stop_id_map:
-        skipped += 1
-        continue
-    if card not in utente_map:
-        skipped += 1
-        continue
-
-    uid = utente_map[card]
+titulo_map = {}  # utente_uuid -> titulo_uuid
+for uid, perfil in utente_ids:
     tid = str(uuid.uuid4())
-    val_id = str(uuid.uuid4())
-    viagem_id = str(uuid.uuid4())
-
-    # Pick a random line that serves the boarding stop, fall back to any line
-    candidate_routes = [
-        rc for rc, df2 in routes.items()
-        if boarding in df2['Stop_stn'].values and rc in leitor_map
-    ]
-    route_code = random.choice(candidate_routes) if candidate_routes else random.choice(list(leitor_map.keys()))
-    leitor_id = random.choice(leitor_map[route_code])
-
-    try:
-        inicio = datetime.strptime(
-            f"{row['Ride_start_date']} {row['Ride_start_time']}", "%Y-%m-%d %H:%M:%S")
-    except Exception:
-        skipped += 1
-        continue
-
-    # Titulo passe
+    titulo_map[uid] = tid
     lines.append(
         f"INSERT INTO titulo_transporte (id, utente_id, estado, token_ativo, token_expira_em, tipo_titulo, validade, zona_id, version) "
         f"VALUES ('{tid}', '{uid}', 'ATIVO', NULL, NULL, 'PASSE', '2018-12-31', '{zona_rede_id}', 0);"
     )
 
-    # Validacao (single scan)
+print(f"Títulos: {len(titulo_map)}")
+
+# ── PRE-FILTER TRIPS ─────────────────────────────────────────────────────
+# Drop rows where boarding or alighting stops don't exist in our stop list
+valid_stops = set(stop_id_map.keys())
+before = len(trans_df)
+trans_df = trans_df[
+    trans_df['Boarding_stop_stn'].isin(valid_stops) &
+    trans_df['Alighting_stop_stn'].isin(valid_stops)
+].copy()
+after = len(trans_df)
+print(f"Viagens pré-filtradas: {before} -> {after} ({before - after} sem paragens válidas)")
+
+# ── VALIDACOES E VIAGENS ─────────────────────────────────────────────────
+lines.append("\n-- VALIDACOES E VIAGENS")
+
+processed = 0
+parse_errors = 0
+
+for _, row in trans_df.iterrows():
+    boarding = row['Boarding_stop_stn']
+    bus_service = row.get('Bus_Service_Number', None)
+
+    # Assign trip to a random user from our pool
+    uid, _ = random.choice(utente_ids)
+    tid = titulo_map[uid]
+
+    # Pick a leitor: prefer one from the same bus service line
+    if bus_service and bus_service in leitor_map:
+        leitor_id = random.choice(leitor_map[bus_service])
+    else:
+        route_code = random.choice(list(leitor_map.keys()))
+        leitor_id = random.choice(leitor_map[route_code])
+
+    try:
+        inicio = datetime.strptime(
+            f"{row['Ride_start_date']} {row['Ride_start_time']}", "%Y-%m-%d %H:%M:%S")
+    except Exception:
+        parse_errors += 1
+        continue
+
+    val_id = str(uuid.uuid4())
+    viagem_id = str(uuid.uuid4())
+
+    # Validacao (single scan at boarding)
     lines.append(
         f"INSERT INTO validacao (id, titulo_id, leitor_id, momento, resultado) "
         f"VALUES ('{val_id}', '{tid}', '{leitor_id}', "
@@ -218,11 +236,11 @@ for _, row in trans_df.iterrows():
 
     processed += 1
 
-print(f"Viagens processadas: {processed}, ignoradas: {skipped}")
+print(f"Viagens processadas: {processed}, erros de parse: {parse_errors}")
 
 # ── ESCREVER FICHEIRO ─────────────────────────────────────────────────────
 with open('data/seed.sql', 'w', encoding='utf-8') as f:
     f.write('\n'.join(lines))
 
-print(f"\nFicheiro data/seed.sql gerado com {len(lines)} linhas.")
+print(f"\nFicheiro data/seed.sql gerado com {len(lines)} linhas SQL.")
 print("Pronto!")
