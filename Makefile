@@ -71,6 +71,12 @@ dev-stop: ## Stop local PostgreSQL + Redis
 	docker compose down
 	@echo "✅ Local infrastructure stopped"
 
+frontend-install: ## Install frontend dependencies
+	cd frontend && npm install
+
+frontend-dev: ## Start the Vue PWA frontend development server
+	cd frontend && npm run dev
+
 # ══════════════════════════════════════════════════════════════
 # DOCKER BUILD
 # ══════════════════════════════════════════════════════════════
