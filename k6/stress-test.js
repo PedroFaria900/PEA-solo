@@ -77,7 +77,7 @@ function doRequests(data, recordSteady) {
   });
   check(redeRes, {
     'rede 200':         r => r.status === 200,
-    'rede json válido': r => { try { return redeRes.json() && typeof redeRes.json() === 'object'; } catch { return false; } },
+    'rede json valido': r => { try { return redeRes.json() && typeof redeRes.json() === 'object'; } catch { return false; } },
   });
   if (recordSteady) tRede.add(redeRes.timings.duration);
 
@@ -112,7 +112,7 @@ function doRequests(data, recordSteady) {
   });
   check(viagensRes, {
     'viagens 200':         r => r.status === 200,
-    'viagens json válido': r => { try { return Array.isArray(viagensRes.json()); } catch { return false; } },
+    'viagens json valido': r => { try { return Array.isArray(viagensRes.json()); } catch { return false; } },
   });
   if (recordSteady) tViagens.add(viagensRes.timings.duration);
 
