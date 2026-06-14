@@ -3,6 +3,7 @@ package pt.uminho.mei.bilhetica.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import pt.uminho.mei.bilhetica.enums.PerfilUtente;
+import pt.uminho.mei.bilhetica.enums.TipoTitulo;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -18,8 +19,9 @@ public class Tarifario {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "tipo_titulo", nullable = false)
-    private String tipoTitulo;
+    private TipoTitulo tipoTitulo;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "perfil_utente", nullable = false)

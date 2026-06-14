@@ -25,7 +25,7 @@ public class CatalogoController {
         
         // Group by tipo_titulo
         Map<String, List<Map<String, Object>>> catalogo = tarifarios.stream().collect(Collectors.groupingBy(
-            t -> t.getTipoTitulo().toLowerCase(),
+            t -> t.getTipoTitulo().name().toLowerCase(),
             Collectors.mapping(t -> Map.of(
                 "id", t.getId(),
                 "nome", t.getTipoTitulo() + " " + t.getPerfilUtente(),

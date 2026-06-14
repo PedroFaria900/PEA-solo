@@ -10,8 +10,8 @@ http:
     type: json
     data: |-
       {
-        "tituloId": "eyJhbGciOiJIUzI1NiIsInR...",
-        "leitorId": "123e4567-e89b-12d3-a456-426614174000"
+        "tituloId": "123e4567-e89b-12d3-a456-426614174000",
+        "leitorCodigo": "SER_52f1-BUS01"
       }
 
   auth: inherit

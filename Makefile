@@ -18,6 +18,12 @@ K8S_DB_PORT   := 5435
 
 API_PORT      := 8080
 
+# Postgres client (psql/pg_dump/pg_restore) run in a throwaway container so no
+# host psql install is needed. --network host reaches published/forwarded ports;
+# the repo is mounted at /work so \copy resolves 'data/seed/*.csv' relative paths.
+PG_CLIENT_IMG := postgres:16-alpine
+DOCKER_PG     := docker run --rm -i --network host -v "$(PWD)":/work -w /work -e PGPASSWORD=$(DB_PASS) $(PG_CLIENT_IMG)
+
 MINIKUBE_MEM  := 4096
 MINIKUBE_CPUS := 2
 
@@ -27,6 +33,7 @@ MINIKUBE_CPUS := 2
         build release \
         k8s-start k8s-deploy k8s-status k8s-tunnel k8s-stop \
         seed-generate seed-local seed-k8s pip-install \
+        snapshot-local restore-local snapshot-k8s restore-k8s \
         indexes-local indexes-k8s \
         test-user \
         k6-fase1 k6-fase2 k6-fase3 k6-validacao k6-all \
@@ -156,39 +163,66 @@ pip-install: ## Create .venv and install Python dependencies
 	.venv/bin/pip install -r requirements.txt -q
 	@echo "✅ Python dependencies installed"
 
-seed-generate: pip-install ## Generate data/seed.sql — default: 5000 rows. Override: make seed-generate SEED_ROWS=1000000
-	@echo "🔄 Generating seed.sql (SEED_ROWS=$(or $(SEED_ROWS),5000), NUM_UTENTES=$(or $(NUM_UTENTES),200))..."
+seed-generate: pip-install ## Generate data/seed/ CSVs + load.sql + manifest. Override: make seed-generate SEED_ROWS=1000000 NUM_UTENTES=100000
+	@echo "🔄 Generating data/seed/ (SEED_ROWS=$(or $(SEED_ROWS),5000), NUM_UTENTES=$(or $(NUM_UTENTES),200))..."
 	SEED_ROWS=$(or $(SEED_ROWS),5000) NUM_UTENTES=$(or $(NUM_UTENTES),200) .venv/bin/python data/converter.py
-	@echo "✅ data/seed.sql generated"
+	@echo "✅ data/seed/ generated"
 
-seed-local: seed-generate ## Seed the local PostgreSQL (docker-compose)
-	@echo "🌱 Seeding local database..."
-	docker exec -i bilhetica-postgres psql -q -U $(DB_USER) -d $(DB_NAME) < data/seed.sql > /dev/null``
+# load.sql uses psql \copy (client-side files). The DOCKER_PG client mounts the
+# repo at /work, so the 'data/seed/*.csv' paths resolve; --network host reaches
+# the compose postgres on $(LOCAL_DB_PORT).
+seed-local: seed-generate ## Seed the local PostgreSQL via COPY (containerized psql)
+	@echo "🌱 Seeding local database (COPY)..."
+	$(DOCKER_PG) psql -h localhost -p $(LOCAL_DB_PORT) -U $(DB_USER) -d $(DB_NAME) -f data/seed/load.sql
 	@echo "✅ Local database seeded"
 
-seed-k8s: seed-generate ## Seed the Kubernetes PostgreSQL (requires port-forward)
+seed-k8s: seed-generate ## Seed the Kubernetes PostgreSQL via COPY (requires port-forward)
 	@echo "🌱 Starting port-forward and seeding..."
 	@# Start port-forward in background, seed, then kill it
 	kubectl port-forward svc/postgres $(K8S_DB_PORT):5432 &
 	@PF_PID=$$!; \
 	sleep 3; \
-	PGPASSWORD=$(DB_PASS) psql -h localhost -p $(K8S_DB_PORT) -U $(DB_USER) -d $(DB_NAME) -f data/seed.sql; \
+	$(DOCKER_PG) psql -h localhost -p $(K8S_DB_PORT) -U $(DB_USER) -d $(DB_NAME) -f data/seed/load.sql; \
 	kill $$PF_PID 2>/dev/null; \
 	echo "✅ Kubernetes database seeded"
+
+# ── Snapshot / restore (fast repeatable resets of a built dataset) ──────────
+snapshot-local: ## pg_dump the local DB to data/loadtest.dump (run after seed + indexes)
+	@echo "📦 Snapshotting local database to data/loadtest.dump..."
+	$(DOCKER_PG) pg_dump -h localhost -p $(LOCAL_DB_PORT) -U $(DB_USER) -Fc -d $(DB_NAME) -f data/loadtest.dump
+	@echo "✅ Snapshot written to data/loadtest.dump"
+
+restore-local: ## Restore data/loadtest.dump into the local DB (parallel)
+	@echo "♻️  Restoring data/loadtest.dump into local database..."
+	$(DOCKER_PG) pg_restore -h localhost -p $(LOCAL_DB_PORT) -U $(DB_USER) -j 4 --clean --if-exists -d $(DB_NAME) data/loadtest.dump
+	@echo "✅ Local database restored"
+
+snapshot-k8s: ## pg_dump the k8s DB to data/loadtest.dump (requires port-forward)
+	kubectl port-forward svc/postgres $(K8S_DB_PORT):5432 &
+	@PF_PID=$$!; sleep 3; \
+	$(DOCKER_PG) pg_dump -h localhost -p $(K8S_DB_PORT) -U $(DB_USER) -Fc -d $(DB_NAME) -f data/loadtest.dump; \
+	kill $$PF_PID 2>/dev/null; \
+	echo "✅ Snapshot written to data/loadtest.dump"
+
+restore-k8s: ## Restore data/loadtest.dump into the k8s DB (requires port-forward)
+	kubectl port-forward svc/postgres $(K8S_DB_PORT):5432 &
+	@PF_PID=$$!; sleep 3; \
+	$(DOCKER_PG) pg_restore -h localhost -p $(K8S_DB_PORT) -U $(DB_USER) -j 4 --clean --if-exists -d $(DB_NAME) data/loadtest.dump; \
+	kill $$PF_PID 2>/dev/null; \
+	echo "✅ Kubernetes database restored"
 
 # ══════════════════════════════════════════════════════════════
 # DATABASE INDEXES
 # ══════════════════════════════════════════════════════════════
 
 define INDEX_SQL
-CREATE INDEX IF NOT EXISTS idx_validacao_momento  ON validacao(momento);
-CREATE INDEX IF NOT EXISTS idx_validacao_paragem  ON validacao(paragem_id);
-CREATE INDEX IF NOT EXISTS idx_validacao_titulo   ON validacao(titulo_id);
-CREATE INDEX IF NOT EXISTS idx_validacao_paragem_momento ON validacao(paragem_id, momento);
+CREATE INDEX IF NOT EXISTS idx_validacao_momento         ON validacao(momento);
+CREATE INDEX IF NOT EXISTS idx_validacao_resultado       ON validacao(resultado);
 CREATE INDEX IF NOT EXISTS idx_validacao_titulo_momento  ON validacao(titulo_id, momento);
-CREATE INDEX IF NOT EXISTS idx_viagem_inicio      ON viagem(inicio);
-CREATE INDEX IF NOT EXISTS idx_viagem_entrada     ON viagem(val_entrada_id);
-CREATE INDEX IF NOT EXISTS idx_linha_paragem_seq  ON linha_paragem(linha_id, sentido, sequencia);
+CREATE INDEX IF NOT EXISTS idx_validacao_leitor_momento  ON validacao(leitor_id, momento);
+CREATE INDEX IF NOT EXISTS idx_viagem_momento            ON viagem(momento);
+CREATE INDEX IF NOT EXISTS idx_viagem_validacao          ON viagem(validacao_id);
+CREATE INDEX IF NOT EXISTS idx_linha_paragem_seq         ON linha_paragem(linha_id, sentido, sequencia);
 endef
 export INDEX_SQL
 

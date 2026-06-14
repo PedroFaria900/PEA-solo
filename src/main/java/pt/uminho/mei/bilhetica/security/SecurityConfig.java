@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/linhas/**").permitAll()
                 .requestMatchers("/api/paragens/**").permitAll()
                 .requestMatchers("/api/rotas/**").permitAll()
+                .requestMatchers("/api/leitores/**").permitAll()
                 .anyRequest().authenticated())
             .addFilterBefore(jwtFilter,
                 UsernamePasswordAuthenticationFilter.class);

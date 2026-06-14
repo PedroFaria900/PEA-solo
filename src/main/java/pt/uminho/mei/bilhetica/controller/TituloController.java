@@ -40,12 +40,4 @@ public class TituloController {
         return ResponseEntity.status(201).body(
             tituloService.comprar(user.getUsername(), request));
     }
-
-    @GetMapping("/{id}/token")
-    public ResponseEntity<TokenResponse> gerarToken(
-            @AuthenticationPrincipal UserDetails user,
-            @PathVariable UUID id) {
-        return ResponseEntity.ok(
-            tituloService.gerarToken(user.getUsername(), id));
-    }
 }

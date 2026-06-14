@@ -36,6 +36,8 @@ build/
 data/*.csv
 data/*.pickle
 data/*.sql
+data/seed/
+data/*.dump
 k6_results/
 
 # Python virtual environment
