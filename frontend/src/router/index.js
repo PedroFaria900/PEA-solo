@@ -4,6 +4,7 @@ import Dashboard from '../views/Dashboard.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Buy from '../views/Buy.vue'
+import ComprarBilhetes from '../views/ComprarBilhetes.vue'
 import Simulator from '../views/Simulator.vue'
 import Trips from '../views/Trips.vue'
 import Search from '../views/Search.vue'
@@ -46,7 +47,7 @@ const routes = [
     path: '/trips',
     name: 'Trips',
     component: Trips,
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: false }
   },
   {
     path: '/search',
@@ -71,7 +72,13 @@ const routes = [
     name: 'ChargeWallet',
     component: ChargeWallet,
     meta: { requiresAuth: true }
-  }
+  },
+  {
+    path: '/comprar-bilhetes',
+    name: 'ComprarBilhetes',
+    component: ComprarBilhetes,
+    meta: { requiresAuth: true }
+  },
 ]
 
 const router = createRouter({

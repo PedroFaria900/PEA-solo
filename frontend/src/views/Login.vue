@@ -1,72 +1,224 @@
 <template>
-  <div class="auth-page">
-    <div class="auth-logo">
-      <h1>🚇 Bilhética</h1>
-      <p>Sistema de Transportes Públicos</p>
+  <div class="login-wrapper">
+    
+    <div class="login-header">
+      <h1 class="title">Bem Vindo</h1>
+      <p class="subtitle">Login para entrar na conta</p>
     </div>
 
-    <div v-if="authStore.error" class="alert alert-error">
-      ⚠️ {{ authStore.error }}
-    </div>
-
-    <form @submit.prevent="handleLogin">
-      <div class="form-group">
-        <label class="form-label" for="email">E-mail</label>
-        <input
-          type="email"
-          id="email"
-          v-model="email"
-          class="form-control"
-          placeholder="exemplo@email.com"
-          required
+    <form class="login-form" @submit.prevent="handleLogin">
+      
+      <div class="input-group" :class="{ 'has-error': emailError }">
+        <label for="email">Email</label>
+        <input 
+          id="email" 
+          v-model="email" 
+          type="email" 
+          @input="emailError = false"
         />
+        <span v-if="emailError" class="error-message">Email é necessário</span>
       </div>
 
-      <div class="form-group">
-        <label class="form-label" for="password">Palavra-passe</label>
-        <input
-          type="password"
-          id="password"
-          v-model="password"
-          class="form-control"
-          placeholder="••••••••"
-          required
+      <div class="input-group" :class="{ 'has-error': passwordError }">
+        <label for="password">Password</label>
+        <input 
+          id="password" 
+          v-model="password" 
+          type="password" 
+          @input="passwordError = false"
         />
+        <span v-if="passwordError" class="error-message">Password é necessário</span>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" :disabled="authStore.loading" style="margin-top: 8px;">
-        {{ authStore.loading ? 'A entrar...' : 'Entrar' }}
-      </button>
+      <div class="actions">
+        <button type="submit" class="btn-primary">Entrar</button>
+        <router-link to="/register" class="btn-secondary">Criar Conta</router-link>
+      </div>
+
+      <div class="forgot-password">
+        Esqueceu-se da senha?<br/>
+        <a href="#">Clique Aqui</a>
+      </div>
+
     </form>
-
-    <p style="text-align: center; margin-top: 24px; font-size: 0.9rem; color: var(--text-muted);">
-      Não tens conta?
-      <router-link to="/register" style="color: var(--blue); font-weight: 600;">Criar conta</router-link>
-    </p>
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref } from 'vue'
-import { useAuthStore } from '../store/auth'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../store/auth' // Importa a tua store
 
-export default {
-  name: 'Login',
-  setup() {
-    const authStore = useAuthStore()
-    const router = useRouter()
-    const email = ref('')
-    const password = ref('')
+// Inicializamos o router e a store
+const router = useRouter()
+const authStore = useAuthStore()
 
-    const handleLogin = async () => {
-      try {
-        await authStore.login(email.value, password.value)
-        router.push({ name: 'Dashboard' })
-      } catch (err) { /* handled in store */ }
-    }
+const email = ref('')
+const password = ref('')
+const emailError = ref(false)
+const passwordError = ref(false)
 
-    return { email, password, authStore, handleLogin }
-  }
+const handleLogin = () => {
+  emailError.value = !email.value
+  passwordError.value = !password.value
+  if (!email.value || !password.value) return
+
+  // Mock — usa setToken para persistir no localStorage
+  authStore.setToken('token-falso-de-teste')
+  authStore.user = { nome: 'André Silva', email: email.value, saldo: 18.75 }
+
+  router.push({ name: 'Profile' })
 }
+
 </script>
+
+<style scoped>
+/* Contentor principal da página */
+.login-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #ffffff;
+  padding: 0 24px;
+}
+
+/* Cabeçalho */
+.login-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.title {
+  color: #007AFF; /* Azul do mockup */
+  font-size: 36px;
+  font-weight: bold;
+  margin: 0 0 10px 0;
+}
+
+.subtitle {
+  color: #666666;
+  font-size: 18px;
+  margin: 0;
+}
+
+/* Formulário */
+.login-form {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Grupo de Inputs (Label flutuante) */
+.input-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group label {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  background-color: #ffffff;
+  padding: 0 4px;
+  font-size: 13px;
+  color: #666666;
+  pointer-events: none; /* Para não bloquear o clique no input */
+}
+
+.input-group input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #333333;
+  border-radius: 8px;
+  font-size: 16px;
+  outline: none;
+  background: transparent;
+  transition: border-color 0.2s;
+}
+
+.input-group input:focus {
+  border-color: #007AFF;
+}
+
+/* Estilos de Erro */
+.input-group.has-error input {
+  border-color: #D32F2F;
+}
+
+.input-group.has-error label {
+  color: #D32F2F;
+}
+
+.error-message {
+  color: #D32F2F;
+  font-size: 13px;
+  margin-top: 6px;
+  margin-left: 4px;
+}
+
+/* Botões */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.btn-primary {
+  background-color: #007AFF;
+  color: #ffffff;
+  border: none;
+  border-radius: 30px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #005bb5;
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #007AFF;
+  border: 1px solid #007AFF;
+  border-radius: 30px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+  background-color: #f0f7ff;
+}
+
+/* Footer Links */
+.forgot-password {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 14px;
+  color: #666666;
+  line-height: 1.5;
+}
+
+.forgot-password a {
+  color: #007AFF;
+  text-decoration: none;
+}
+
+.forgot-password a:hover {
+  text-decoration: underline;
+}
+</style>

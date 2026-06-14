@@ -1,63 +1,309 @@
 <template>
-  <div class="auth-page">
-    <div class="auth-logo">
-      <h1>🚇 Bilhética</h1>
-      <p>Cria a tua conta de utente</p>
+  <div class="register-wrapper">
+    
+    <div class="register-header">
+      <h1 class="title">Criar Conta</h1>
+      <p class="subtitle">Crie a sua conta para começar</p>
     </div>
 
-    <div v-if="authStore.error" class="alert alert-error">⚠️ {{ authStore.error }}</div>
-    <div v-if="successMsg" class="alert alert-success">✅ {{ successMsg }}</div>
+    <form class="register-form" @submit.prevent="handleRegister">
+      
+      <div class="input-group" :class="{ 'has-error': nameError }">
+        <label for="name">Nome</label>
+        <input id="name" v-model="name" type="text" @input="nameError = false" />
+        <span v-if="nameError" class="error-message">Nome é necessário</span>
+      </div>
 
-    <form @submit.prevent="handleRegister">
-      <div class="form-group">
-        <label class="form-label" for="nome">Nome Completo</label>
-        <input type="text" id="nome" v-model="nome" class="form-control" placeholder="Maria Silva" required />
+      <div class="input-group" :class="{ 'has-error': emailError }">
+        <label for="email">Email</label>
+        <input id="email" v-model="email" type="email" @input="emailError = false" />
+        <span v-if="emailError" class="error-message">Email é necessário</span>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="email">E-mail</label>
-        <input type="email" id="email" v-model="email" class="form-control" placeholder="exemplo@email.com" required />
+
+      <div class="input-group" :class="{ 'has-error': passwordError }">
+        <label for="password">Password</label>
+        <input id="password" v-model="password" type="password"
+          @input="passwordError = false; checkPasswords()" />
+        <span v-if="passwordError" class="error-message">Password é necessário</span>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="telemovel">Telemóvel</label>
-        <input type="tel" id="telemovel" v-model="telemovel" class="form-control" placeholder="+351 912 345 678" required />
+
+      <div class="input-group" :class="{ 'has-error': confirmPasswordError }">
+        <label for="confirmPassword">Confirmar Password</label>
+        <input id="confirmPassword" v-model="confirmPassword" type="password"
+          @input="confirmPasswordError = false; checkPasswords()" />
+        <span v-if="confirmPasswordError" class="error-message">{{ confirmPasswordErrorMsg }}</span>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="password">Palavra-passe</label>
-        <input type="password" id="password" v-model="password" class="form-control" placeholder="••••••••" required />
+
+      <div class="input-group" :class="{ 'has-error': phoneError }">
+        <label for="phone">Telemóvel</label>
+        <input id="phone" v-model="phone" type="tel" @input="phoneError = false" />
+        <span v-if="phoneError" class="error-message">Telemóvel é necessário</span>
       </div>
-      <button type="submit" class="btn btn-primary btn-block" :disabled="authStore.loading" style="margin-top: 8px;">
-        {{ authStore.loading ? 'A criar conta...' : 'Criar Conta' }}
-      </button>
+
+      <!-- Tipo de utente -->
+      <div class="input-group" :class="{ 'has-error': tipoError }">
+        <label class="label-tipo">Tipo de Utente</label>
+        <div class="tipo-selector">
+          <button
+            v-for="opcao in tipoOpcoes"
+            :key="opcao.value"
+            type="button"
+            class="tipo-btn"
+            :class="{ ativo: tipo === opcao.value }"
+            @click="tipo = opcao.value; tipoError = false"
+          >
+            {{ opcao.emoji }} {{ opcao.label }}
+          </button>
+        </div>
+        <span v-if="tipoError" class="error-message">Selecione o tipo de utente</span>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn-primary">Criar Conta</button>
+      </div>
+
+      <div class="login-link">
+        Já tem conta?<br/>
+        <router-link to="/login">Clique Aqui</router-link>
+      </div>
+
     </form>
-
-    <p style="text-align: center; margin-top: 24px; font-size: 0.9rem; color: var(--text-muted);">
-      Já tens conta?
-      <router-link to="/login" style="color: var(--blue); font-weight: 600;">Entrar aqui</router-link>
-    </p>
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref } from 'vue'
-import { useAuthStore } from '../store/auth'
 import { useRouter } from 'vue-router'
 
-export default {
-  name: 'Register',
-  setup() {
-    const authStore = useAuthStore()
-    const router = useRouter()
-    const nome = ref(''), email = ref(''), telemovel = ref(''), password = ref(''), successMsg = ref('')
+const router = useRouter()
 
-    const handleRegister = async () => {
-      try {
-        await authStore.register(nome.value, email.value, telemovel.value, password.value)
-        successMsg.value = 'Conta criada! Redirecionando...'
-        setTimeout(() => router.push({ name: 'Login' }), 1500)
-      } catch (err) { /* handled in store */ }
-    }
+const name = ref('')
+const email = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+const phone = ref('')
+const tipo = ref('')
 
-    return { nome, email, telemovel, password, successMsg, authStore, handleRegister }
+const nameError = ref(false)
+const emailError = ref(false)
+const passwordError = ref(false)
+const confirmPasswordError = ref(false)
+const confirmPasswordErrorMsg = ref('')
+const phoneError = ref(false)
+const tipoError = ref(false)
+
+const tipoOpcoes = [
+  { value: 'NORMAL',    label: 'Normal'},
+  { value: 'ESTUDANTE', label: 'Estudante'},
+  { value: 'SENIOR',    label: 'Sénior'},
+]
+
+const checkPasswords = () => {
+  if (confirmPasswordError.value && password.value === confirmPassword.value) {
+    confirmPasswordError.value = false
+  }
+}
+
+const handleRegister = () => {
+  nameError.value = false
+  emailError.value = false
+  passwordError.value = false
+  confirmPasswordError.value = false
+  phoneError.value = false
+  tipoError.value = false
+  let hasError = false
+
+  if (!name.value)  { nameError.value = true;  hasError = true }
+  if (!email.value) { emailError.value = true;  hasError = true }
+  if (!password.value) { passwordError.value = true; hasError = true }
+  if (!phone.value) { phoneError.value = true;  hasError = true }
+  if (!tipo.value)  { tipoError.value = true;   hasError = true }
+
+  if (!confirmPassword.value) {
+    confirmPasswordError.value = true
+    confirmPasswordErrorMsg.value = 'Confirmação é necessária'
+    hasError = true
+  } else if (password.value !== confirmPassword.value) {
+    confirmPasswordError.value = true
+    confirmPasswordErrorMsg.value = 'As passwords não coincidem'
+    hasError = true
+  }
+
+  if (!hasError) {
+    console.log('Registar:', { name: name.value, email: email.value, phone: phone.value, tipo: tipo.value })
+    alert('Conta criada com sucesso! (Simulação)')
+    router.push({ name: 'Login' })
   }
 }
 </script>
+
+<style scoped>
+.register-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #ffffff;
+  padding: 40px 24px;
+}
+
+.register-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.title {
+  color: #007AFF;
+  font-size: 36px;
+  font-weight: bold;
+  margin: 0 0 10px 0;
+}
+
+.subtitle {
+  color: #666666;
+  font-size: 18px;
+  margin: 0;
+}
+
+.register-form {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Inputs — igual ao original */
+.input-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group label {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  background-color: #ffffff;
+  padding: 0 4px;
+  font-size: 13px;
+  color: #666666;
+  pointer-events: none;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #333333;
+  border-radius: 8px;
+  font-size: 16px;
+  outline: none;
+  background: transparent;
+  transition: border-color 0.2s;
+}
+
+.input-group input:focus {
+  border-color: #007AFF;
+}
+
+.input-group.has-error input {
+  border-color: #D32F2F;
+}
+
+.input-group.has-error label,
+.input-group.has-error .label-tipo {
+  color: #D32F2F;
+}
+
+.error-message {
+  color: #D32F2F;
+  font-size: 13px;
+  margin-top: 6px;
+  margin-left: 4px;
+}
+
+/* Seletor de tipo */
+.label-tipo {
+  font-size: 13px;
+  color: #666666;
+  margin-bottom: 10px;
+  padding-left: 2px;
+}
+
+.tipo-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.tipo-btn {
+  flex: 1;
+  padding: 10px 4px;
+  border: 1px solid #333333;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tipo-btn:hover {
+  border-color: #007AFF;
+  color: #007AFF;
+}
+
+.tipo-btn.ativo {
+  background: #007AFF;
+  border-color: #007AFF;
+  color: #ffffff;
+}
+
+/* Botões */
+.actions {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+}
+
+.btn-primary {
+  background-color: #007AFF;
+  color: #ffffff;
+  border: none;
+  border-radius: 30px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.2s;
+  font-family: inherit;
+}
+
+.btn-primary:hover {
+  background-color: #005bb5;
+}
+
+.login-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #666666;
+  line-height: 1.5;
+}
+
+.login-link a {
+  color: #007AFF;
+  text-decoration: none;
+}
+
+.login-link a:hover {
+  text-decoration: underline;
+}
+</style>
