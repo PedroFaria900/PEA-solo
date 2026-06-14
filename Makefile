@@ -163,9 +163,9 @@ pip-install: ## Create .venv and install Python dependencies
 	.venv/bin/pip install -r requirements.txt -q
 	@echo "✅ Python dependencies installed"
 
-seed-generate: pip-install ## Generate data/seed/ CSVs + load.sql + manifest. Override: make seed-generate SEED_ROWS=1000000 NUM_UTENTES=100000
-	@echo "🔄 Generating data/seed/ (SEED_ROWS=$(or $(SEED_ROWS),5000), NUM_UTENTES=$(or $(NUM_UTENTES),200))..."
-	SEED_ROWS=$(or $(SEED_ROWS),5000) NUM_UTENTES=$(or $(NUM_UTENTES),200) .venv/bin/python data/converter.py
+seed-generate: pip-install ## Generate data/seed/ CSVs + load.sql + manifest. Override: make seed-generate SEED_ROWS=1000000 NUM_UTENTES=50000 ZIPF_S=0.5
+	@echo "🔄 Generating data/seed/ (SEED_ROWS=$(or $(SEED_ROWS),5000), NUM_UTENTES=$(or $(NUM_UTENTES),200), ZIPF_S=$(or $(ZIPF_S),0.8))..."
+	SEED_ROWS=$(or $(SEED_ROWS),5000) NUM_UTENTES=$(or $(NUM_UTENTES),200) ZIPF_S=$(or $(ZIPF_S),0.8) PACK_FRAC=$(or $(PACK_FRAC),0.2) BILHETE_FRAC=$(or $(BILHETE_FRAC),0.2) .venv/bin/python data/converter.py
 	@echo "✅ data/seed/ generated"
 
 # load.sql uses psql \copy (client-side files). The DOCKER_PG client mounts the
@@ -253,10 +253,10 @@ test-user: ## Register the default test user (maria@email.com)
 # K6 LOAD TESTS
 # ══════════════════════════════════════════════════════════════
 
-k6-validacao: ## Run the end-to-end validation load test
-	@echo "🔥 Validation flow test"
+k6-validacao: ## Run the write-path validation stress test (POST /api/validacoes)
+	@echo "🔥 Validation write-path stress test"
 	@mkdir -p k6_results
-	@test -f k6/teste_validacao_e2e.js && k6 run --out csv=k6_results/validacao_e2e.csv k6/teste_validacao_e2e.js || k6 run --out csv=k6_results/validacao.csv k6/teste_validacao.js
+	VUS=100 $(K6) --out csv=k6_results/validacao.csv k6/validacao-stress.js
 
 K6 := k6 run
 RESULTS_DIR := k6_results/$$(date +%Y%m%d_%H%M%S)
@@ -276,6 +276,22 @@ capacity-%:
 
 capacity-sweep: capacity-2000 capacity-2500 capacity-3000 capacity-3500
 	@echo "✅ All capacity tests completed"
+
+validacao-stress-%:
+	@mkdir -p $(RESULTS_DIR)
+	@echo "🔥 Running validation stress test with $* VUs"
+	VUS=$* $(K6) --out csv=$(RESULTS_DIR)/validacao_stress_$*.csv k6/validacao-stress.js
+
+validacao-stress-all: validacao-stress-100 validacao-stress-500 validacao-stress-1000 validacao-stress-1500 validacao-stress-2000
+	@echo "✅ All validation stress tests completed"
+
+validacao-capacity-%:
+	@mkdir -p $(RESULTS_DIR)
+	@echo "🔥 Running validation capacity test with $* RPS"
+	RPS=$* $(K6) --out csv=$(RESULTS_DIR)/validacao_capacity_$*.csv k6/validacao-capacity.js
+
+validacao-capacity-sweep: validacao-capacity-500 validacao-capacity-1000 validacao-capacity-1500 validacao-capacity-2000
+	@echo "✅ All validation capacity tests completed"
 
 # ══════════════════════════════════════════════════════════════
 # CLEANUP

@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import { check } from 'k6';
-import { provisionTokens, BASE_URL } from './lib/setup.js';
+import { loginPool, sampleNetworkIds, BASE_URL } from './lib/manifest.js';
 
 const TARGET_RPS = __ENV.RPS ? parseInt(__ENV.RPS) : 2000;
 const NUM_TOKENS = __ENV.TOKENS ? parseInt(__ENV.TOKENS) : 200;
@@ -24,43 +24,85 @@ export const options = {
     },
   },
   thresholds: {
-    'http_req_duration{endpoint:rede}':   ['p(95)<3000', 'p(99)<5000'],
-    'http_req_duration{endpoint:linhas}': ['p(95)<3000', 'p(99)<5000'],
-    'http_req_failed': ['rate<0.05'],
-    'checks': ['rate>0.99'],
+    'http_req_duration{endpoint:rede}':        ['p(95)<3000', 'p(99)<5000'],
+    'http_req_duration{endpoint:est_linha}':   ['p(95)<3000', 'p(99)<5000'],
+    'http_req_duration{endpoint:est_paragem}': ['p(95)<3000', 'p(99)<5000'],
+    'http_req_duration{endpoint:viagens}':     ['p(95)<3000', 'p(99)<5000'],
+    'http_req_duration{endpoint:titulos}':     ['p(95)<3000', 'p(99)<5000'],
+    'http_req_duration{endpoint:linhas}':      ['p(95)<3000', 'p(99)<5000'],
+    'http_req_failed':    ['rate<0.05'],
+    'checks':             ['rate>0.99'],
     // Alert if k6 can't keep up with the requested rate
     'dropped_iterations': ['count<100'],
   },
 };
 
 export function setup() {
-  const tokens = provisionTokens(NUM_TOKENS);
-  return { tokens };
+  const pool = loginPool(NUM_TOKENS);
+  const ids  = sampleNetworkIds(pool[0].token, 20);
+  return { pool, ids };
 }
 
 export default function (data) {
   // Random token selection: at arrival-rate, __VU is less meaningful
-  const token = data.tokens[Math.floor(Math.random() * data.tokens.length)];
+  const entry = data.pool[Math.floor(Math.random() * data.pool.length)];
   const headers = {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${entry.token}`,
   };
+  const { linhaIds, paragemIds } = data.ids;
 
-  // Pick one endpoint per iteration (arrival-rate counts iterations as requests)
-  // 50/50 split between the two endpoints
-  const hitRede = Math.random() < 0.5;
+  // Weighted endpoint mix per iteration (arrival-rate counts iterations as requests)
+  const roll = Math.random();
 
-  if (hitRede) {
-    const res = http.get(`${BASE_URL}/api/rede/estatisticas`, {
+  if (roll < 0.20) {
+    // Heavy network-wide aggregate (UC3 analytics)
+    const res = http.get(`${BASE_URL}/api/admin/estatisticas/rede`, {
       headers,
       tags: { endpoint: 'rede' },
     });
-    check(res, { 'rede 200': (r) => r.status === 200 });
+    check(res, { 'rede 200': r => r.status === 200 });
+
+  } else if (roll < 0.35) {
+    // Stats by linha (analytics per route)
+    const id = linhaIds[Math.floor(Math.random() * linhaIds.length)];
+    const res = http.get(`${BASE_URL}/api/admin/estatisticas/linhas/${id}`, {
+      headers,
+      tags: { endpoint: 'est_linha' },
+    });
+    check(res, { 'est_linha 200': r => r.status === 200 });
+
+  } else if (roll < 0.50) {
+    // Stats by paragem (analytics per stop)
+    const id = paragemIds[Math.floor(Math.random() * paragemIds.length)];
+    const res = http.get(`${BASE_URL}/api/admin/estatisticas/paragens/${id}`, {
+      headers,
+      tags: { endpoint: 'est_paragem' },
+    });
+    check(res, { 'est_paragem 200': r => r.status === 200 });
+
+  } else if (roll < 0.65) {
+    // Per-user trip history (SIC/UC2 user history view)
+    const res = http.get(`${BASE_URL}/api/viagens`, {
+      headers,
+      tags: { endpoint: 'viagens' },
+    });
+    check(res, { 'viagens 200': r => r.status === 200 });
+
+  } else if (roll < 0.80) {
+    // Per-user títulos (user title wallet view)
+    const res = http.get(`${BASE_URL}/api/titulos`, {
+      headers,
+      tags: { endpoint: 'titulos' },
+    });
+    check(res, { 'titulos 200': r => r.status === 200 });
+
   } else {
+    // Light public línea catalogue (no aggregation, cache-friendly)
     const res = http.get(`${BASE_URL}/api/linhas`, {
       headers,
       tags: { endpoint: 'linhas' },
     });
-    check(res, { 'linhas 200': (r) => r.status === 200 });
+    check(res, { 'linhas 200': r => r.status === 200 });
   }
 }
