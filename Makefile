@@ -24,12 +24,12 @@ API_PORT      := 8080
 PG_CLIENT_IMG := postgres:16-alpine
 DOCKER_PG     := docker run --rm -i --network host -v "$(PWD)":/work -w /work -e PGPASSWORD=$(DB_PASS) $(PG_CLIENT_IMG)
 
-MINIKUBE_MEM  := 4096
-MINIKUBE_CPUS := 2
+MINIKUBE_MEM  := 12288
+MINIKUBE_CPUS := 8
 
 # ── Phony targets ────────────────────────────────────────────
 .PHONY: help \
-        dev dev-infra dev-api dev-stop \
+        dev dev-infra dev-api dev-stop api-stop \
         build release \
         k8s-start k8s-deploy k8s-status k8s-tunnel k8s-stop \
         seed-generate seed-local seed-k8s pip-install \
@@ -58,6 +58,14 @@ help: ## Show this help
 # LOCAL DEVELOPMENT
 # ══════════════════════════════════════════════════════════════
 
+api-stop: ## Stop any host-side Spring Boot API process (frees API_PORT)
+	@echo "🛑 Stopping any local API on port $(API_PORT)..."
+	@-pkill -f "multiModuleProjectDirectory=$(PWD).*spring-boot:run" 2>/dev/null || true
+	@-pkill -f "$(PWD)/target/classes.*BilheticaApplication" 2>/dev/null || true
+	@PIDS=$$(ss -ltnpH "sport = :$(API_PORT)" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2); \
+		if [ -n "$$PIDS" ]; then kill $$PIDS 2>/dev/null || true; echo "   freed port $(API_PORT) (pids: $$PIDS)"; fi
+	@echo "✅ API stopped"
+
 dev-infra: ## Start PostgreSQL + Redis locally (docker-compose)
 	docker compose up postgres redis -d
 	@echo "⏳ Waiting for PostgreSQL to be healthy..."
@@ -71,10 +79,10 @@ dev-infra: ## Start PostgreSQL + Redis locally (docker-compose)
 dev-api: ## Start the Spring Boot backend (local, requires dev-infra)
 	chmod +x ./mvnw && ./mvnw spring-boot:run
 
-dev: dev-infra ## Start infra + backend (blocking — runs API in foreground)
+dev: api-stop dev-infra ## Start infra + backend (blocking — runs API in foreground)
 	@$(MAKE) dev-api
 
-dev-stop: ## Stop local PostgreSQL + Redis
+dev-stop: api-stop ## Stop local API + PostgreSQL + Redis
 	docker compose down
 	@echo "✅ Local infrastructure stopped"
 
@@ -82,8 +90,13 @@ dev-stop: ## Stop local PostgreSQL + Redis
 # DOCKER BUILD
 # ══════════════════════════════════════════════════════════════
 
-build: ## Build the Docker image (tagged :dev)
-	docker build -t $(IMAGE) .
+build: ## Build the Docker image (tagged :dev) — builds inside minikube's daemon when running
+	@if minikube status --format='{{.Host}}' 2>/dev/null | grep -q Running; then \
+		echo "🔧 Building $(IMAGE) inside minikube's Docker daemon..."; \
+		eval $$(minikube docker-env) && docker build -t $(IMAGE) .; \
+	else \
+		docker build -t $(IMAGE) .; \
+	fi
 	@echo "✅ Built $(IMAGE)"
 
 release: ## Tag a release from current git commit
@@ -135,10 +148,9 @@ k8s-tunnel: ## Port-forward the API service to localhost (run in separate termin
 	@echo "   Press Ctrl+C to stop"
 	kubectl port-forward svc/bilhetica-api $(API_PORT):$(API_PORT)
 
-k8s-reload: build ## Rebuild image and restart the API deployment
-	minikube image load $(IMAGE)
+k8s-reload: build ## Rebuild image (inside minikube's daemon) and rolling-restart the API
 	kubectl rollout restart deployment/bilhetica-api
-	kubectl wait --for=condition=ready pod -l app=bilhetica-api --timeout=120s
+	kubectl rollout status deployment/bilhetica-api --timeout=120s
 	@echo "✅ API redeployed"
 
 k8s-logs: ## Tail API pod logs
@@ -171,12 +183,12 @@ seed-generate: pip-install ## Generate data/seed/ CSVs + load.sql + manifest. Ov
 # load.sql uses psql \copy (client-side files). The DOCKER_PG client mounts the
 # repo at /work, so the 'data/seed/*.csv' paths resolve; --network host reaches
 # the compose postgres on $(LOCAL_DB_PORT).
-seed-local: seed-generate ## Seed the local PostgreSQL via COPY (containerized psql)
+seed-local: ## Seed the local PostgreSQL via COPY (containerized psql); run seed-generate first
 	@echo "🌱 Seeding local database (COPY)..."
 	$(DOCKER_PG) psql -h localhost -p $(LOCAL_DB_PORT) -U $(DB_USER) -d $(DB_NAME) -f data/seed/load.sql
 	@echo "✅ Local database seeded"
 
-seed-k8s: seed-generate ## Seed the Kubernetes PostgreSQL via COPY (requires port-forward)
+seed-k8s: ## Seed the Kubernetes PostgreSQL via COPY (requires port-forward); run seed-generate first
 	@echo "🌱 Starting port-forward and seeding..."
 	@# Start port-forward in background, seed, then kill it
 	kubectl port-forward svc/postgres $(K8S_DB_PORT):5432 &
@@ -223,6 +235,8 @@ CREATE INDEX IF NOT EXISTS idx_validacao_leitor_momento  ON validacao(leitor_id,
 CREATE INDEX IF NOT EXISTS idx_viagem_momento            ON viagem(momento);
 CREATE INDEX IF NOT EXISTS idx_viagem_validacao          ON viagem(validacao_id);
 CREATE INDEX IF NOT EXISTS idx_linha_paragem_seq         ON linha_paragem(linha_id, sentido, sequencia);
+CREATE INDEX IF NOT EXISTS idx_titulo_utente             ON titulo_transporte(utente_id);
+CREATE INDEX IF NOT EXISTS idx_lp_paragem                ON linha_paragem(paragem_id);
 endef
 export INDEX_SQL
 
@@ -256,7 +270,7 @@ test-user: ## Register the default test user (maria@email.com)
 k6-validacao: ## Run the write-path validation stress test (POST /api/validacoes)
 	@echo "🔥 Validation write-path stress test"
 	@mkdir -p k6_results
-	VUS=100 $(K6) --out csv=k6_results/validacao.csv k6/validacao-stress.js
+	VUS=100 K6_REPORT_DIR=k6_results $(K6) --out csv=k6_results/validacao.csv k6/validacao-stress.js
 
 K6 := k6 run
 RESULTS_DIR := k6_results/$$(date +%Y%m%d_%H%M%S)
@@ -264,7 +278,7 @@ RESULTS_DIR := k6_results/$$(date +%Y%m%d_%H%M%S)
 stress-%:
 	@mkdir -p $(RESULTS_DIR)
 	@echo "🔥 Running stress test with $* VUs"
-	VUS=$* $(K6) --out csv=$(RESULTS_DIR)/stress_$*.csv k6/stress-test.js
+	VUS=$* K6_REPORT_DIR=$(RESULTS_DIR) $(K6) --out csv=$(RESULTS_DIR)/stress_$*.csv k6/stress-test.js
 
 stress-all: stress-100 stress-500 stress-1000 stress-1500 stress-2000
 	@echo "✅ All stress tests completed"
@@ -272,7 +286,7 @@ stress-all: stress-100 stress-500 stress-1000 stress-1500 stress-2000
 capacity-%:
 	@mkdir -p $(RESULTS_DIR)
 	@echo "🔥 Running capacity test with $* RPS"
-	RPS=$* $(K6) --out csv=$(RESULTS_DIR)/capacity_$*.csv k6/capacity-test.js
+	RPS=$* K6_REPORT_DIR=$(RESULTS_DIR) $(K6) --out csv=$(RESULTS_DIR)/capacity_$*.csv k6/capacity-test.js
 
 capacity-sweep: capacity-2000 capacity-2500 capacity-3000 capacity-3500
 	@echo "✅ All capacity tests completed"
@@ -280,7 +294,7 @@ capacity-sweep: capacity-2000 capacity-2500 capacity-3000 capacity-3500
 validacao-stress-%:
 	@mkdir -p $(RESULTS_DIR)
 	@echo "🔥 Running validation stress test with $* VUs"
-	VUS=$* $(K6) --out csv=$(RESULTS_DIR)/validacao_stress_$*.csv k6/validacao-stress.js
+	VUS=$* K6_REPORT_DIR=$(RESULTS_DIR) $(K6) --out csv=$(RESULTS_DIR)/validacao_stress_$*.csv k6/validacao-stress.js
 
 validacao-stress-all: validacao-stress-100 validacao-stress-500 validacao-stress-1000 validacao-stress-1500 validacao-stress-2000
 	@echo "✅ All validation stress tests completed"
@@ -288,7 +302,7 @@ validacao-stress-all: validacao-stress-100 validacao-stress-500 validacao-stress
 validacao-capacity-%:
 	@mkdir -p $(RESULTS_DIR)
 	@echo "🔥 Running validation capacity test with $* RPS"
-	RPS=$* $(K6) --out csv=$(RESULTS_DIR)/validacao_capacity_$*.csv k6/validacao-capacity.js
+	RPS=$* K6_REPORT_DIR=$(RESULTS_DIR) $(K6) --out csv=$(RESULTS_DIR)/validacao_capacity_$*.csv k6/validacao-capacity.js
 
 validacao-capacity-sweep: validacao-capacity-500 validacao-capacity-1000 validacao-capacity-1500 validacao-capacity-2000
 	@echo "✅ All validation capacity tests completed"
@@ -297,7 +311,7 @@ validacao-capacity-sweep: validacao-capacity-500 validacao-capacity-1000 validac
 # CLEANUP
 # ══════════════════════════════════════════════════════════════
 
-clean-local: ## Stop local infra and remove volumes
+clean-local: api-stop ## Stop local infra and remove volumes
 	docker compose down -v
 	@echo "✅ Local infrastructure and volumes removed"
 

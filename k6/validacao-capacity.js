@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import { loginPool, LEITOR_CODES, BASE_URL } from './lib/manifest.js';
+import { makeHandleSummary } from './lib/summary.js';
 
 /**
  * Write-path capacity test — measures maximum sustained POST /api/validacoes
@@ -50,6 +51,8 @@ export const options = {
 export function setup() {
   return { pool: loginPool(NUM_TOKENS) };
 }
+
+export const handleSummary = makeHandleSummary('validacao-capacity');
 
 export default function (data) {
   const entry  = data.pool[Math.floor(Math.random() * data.pool.length)];

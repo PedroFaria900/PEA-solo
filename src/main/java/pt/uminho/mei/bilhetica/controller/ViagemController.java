@@ -1,5 +1,8 @@
 package pt.uminho.mei.bilhetica.controller;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,11 +23,15 @@ public class ViagemController {
         this.viagemService = viagemService;
     }
 
+    // Default: newest 20. Callers may pass ?page=&size= to navigate further.
+    // Response stays a plain JSON array for client compatibility.
     @GetMapping
     public ResponseEntity<List<ViagemResponse>> historico(
-            @AuthenticationPrincipal UserDetails user) {
+            @AuthenticationPrincipal UserDetails user,
+            @PageableDefault(size = 20, sort = "momento",
+                             direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(
-            viagemService.historico(user.getUsername()));
+            viagemService.historico(user.getUsername(), pageable));
     }
 
     @GetMapping("/{id}")

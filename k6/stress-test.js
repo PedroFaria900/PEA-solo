@@ -2,6 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Trend } from 'k6/metrics';
 import { loginPool, sampleNetworkIds, BASE_URL } from './lib/manifest.js';
+import { makeHandleSummary } from './lib/summary.js';
 
 const TARGET_VUS = __ENV.VUS ? parseInt(__ENV.VUS) : 100;
 // Scale token pool with load; each VU gets a consistent slot via __VU % pool.length
@@ -106,7 +107,7 @@ function doRequests(data, recordSteady) {
   sleep(0.1 + Math.random() * 0.1);
 
   // ── 4. Per-user trip history (SIC/UC2 — user journey view) ───────────────
-  const viagensRes = http.get(`${BASE_URL}/api/viagens`, {
+  const viagensRes = http.get(`${BASE_URL}/api/viagens?page=0&size=20`, {
     headers,
     tags: { endpoint: 'viagens' },
   });
@@ -142,3 +143,5 @@ function doRequests(data, recordSteady) {
 
 export function browse(data)       { doRequests(data, false); }
 export function browseSteady(data) { doRequests(data, true); }
+
+export const handleSummary = makeHandleSummary('stress');

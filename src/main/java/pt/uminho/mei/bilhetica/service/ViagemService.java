@@ -1,5 +1,6 @@
 package pt.uminho.mei.bilhetica.service;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import pt.uminho.mei.bilhetica.dto.ViagemResponse;
 import pt.uminho.mei.bilhetica.entity.Viagem;
@@ -22,11 +23,11 @@ public class ViagemService {
         this.utenteRepository = utenteRepository;
     }
 
-    public List<ViagemResponse> historico(String email) {
+    public List<ViagemResponse> historico(String email, Pageable pageable) {
         var utente = utenteRepository.findByEmail(email)
             .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
 
-        return viagemRepository.findByUtenteId(utente.getId())
+        return viagemRepository.findByUtenteId(utente.getId(), pageable)
             .stream()
             .map(this::toResponse)
             .collect(Collectors.toList());

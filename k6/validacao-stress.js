@@ -2,6 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Trend } from 'k6/metrics';
 import { loginPool, LEITOR_CODES, BASE_URL } from './lib/manifest.js';
+import { makeHandleSummary } from './lib/summary.js';
 
 /**
  * Write-path stress test — measures POST /api/validacoes latency and error rate
@@ -85,3 +86,5 @@ function doValidation(data, recordSteady) {
 
 export function validate(data)       { doValidation(data, false); }
 export function validateSteady(data) { doValidation(data, true); }
+
+export const handleSummary = makeHandleSummary('validacao-stress');

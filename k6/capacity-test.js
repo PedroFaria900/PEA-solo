@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import { loginPool, sampleNetworkIds, BASE_URL } from './lib/manifest.js';
+import { makeHandleSummary } from './lib/summary.js';
 
 const TARGET_RPS = __ENV.RPS ? parseInt(__ENV.RPS) : 2000;
 const NUM_TOKENS = __ENV.TOKENS ? parseInt(__ENV.TOKENS) : 200;
@@ -43,6 +44,8 @@ export function setup() {
   return { pool, ids };
 }
 
+export const handleSummary = makeHandleSummary('capacity');
+
 export default function (data) {
   // Random token selection: at arrival-rate, __VU is less meaningful
   const entry = data.pool[Math.floor(Math.random() * data.pool.length)];
@@ -83,7 +86,7 @@ export default function (data) {
 
   } else if (roll < 0.65) {
     // Per-user trip history (SIC/UC2 user history view)
-    const res = http.get(`${BASE_URL}/api/viagens`, {
+    const res = http.get(`${BASE_URL}/api/viagens?page=0&size=20`, {
       headers,
       tags: { endpoint: 'viagens' },
     });

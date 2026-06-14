@@ -70,7 +70,7 @@ public class EstatisticasService {
             .countByLinhaIdSince(linhaId, desde);
 
         List<Object[]> porHora = validacaoRepository
-            .countByHourForRede(desde);
+            .countByHourForLinha(linhaId, desde);
 
         List<EstatisticasLinhaResponse.AfluenciaHoraDTO> distribuicao =
             porHora.stream()
