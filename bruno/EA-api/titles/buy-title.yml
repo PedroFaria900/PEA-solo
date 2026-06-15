@@ -10,11 +10,19 @@ http:
     type: json
     data: |-
       {
-        "tipo": "BILHETE",
-        "validade": "2024-12-31",
-        "zonasIds": ["123e4567-e89b-12d3-a456-426614174000"],
-        "viagens": 10
+        "tipo": "PASSE",
+        "periodo": "MENSAL",
+        "zonasIds": ["{{zonaAId}}"]
       }
+  # Exemplos de uso:
+  # PASSE mensal uma zona:    tipo=PASSE, periodo=MENSAL, zonasIds=["<zonaAId>"]
+  # PASSE anual interzona:    tipo=PASSE, periodo=ANUAL,  zonasIds=["<zonaAId>","<zonaBId>"]
+  # PASSE mensal tudo:        tipo=PASSE, periodo=MENSAL, zonasIds=[]
+  # PACK com zona:            tipo=PACK,  zonasIds=["<zonaAId>"], validade="2027-12-31", viagens=10
+  # BILHETE global:           tipo=BILHETE, zonasIds=[]
+  # PASSE: servidor calcula a validade a partir do periodo — não enviar 'validade'.
+  # PACK/BILHETE: 'validade' opcional para Pack; Bilhete activa-se na 1ª validação (janela de 1h).
+  # Tiers de viagens válidos para PACK: GET /api/catalogo/pack-tiers.
 
   auth: inherit
 

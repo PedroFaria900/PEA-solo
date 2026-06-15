@@ -1,64 +1,47 @@
 package pt.uminho.mei.bilhetica.controller;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import pt.uminho.mei.bilhetica.entity.Transacao;
-import pt.uminho.mei.bilhetica.entity.Utente;
-import pt.uminho.mei.bilhetica.enums.TipoTransacao;
-import pt.uminho.mei.bilhetica.repository.TransacaoRepository;
-import pt.uminho.mei.bilhetica.repository.UtenteRepository;
+import pt.uminho.mei.bilhetica.dto.CarregamentoRequest;
+import pt.uminho.mei.bilhetica.dto.SaldoResponse;
+import pt.uminho.mei.bilhetica.dto.TransacaoResponse;
+import pt.uminho.mei.bilhetica.service.CarteiraService;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/carteira")
 public class CarteiraController {
 
-    private final UtenteRepository utenteRepository;
-    private final TransacaoRepository transacaoRepository;
+    private final CarteiraService carteiraService;
 
-    public CarteiraController(UtenteRepository utenteRepository,
-                              TransacaoRepository transacaoRepository) {
-        this.utenteRepository = utenteRepository;
-        this.transacaoRepository = transacaoRepository;
+    public CarteiraController(CarteiraService carteiraService) {
+        this.carteiraService = carteiraService;
     }
 
     @GetMapping
-    public ResponseEntity<?> obterSaldo(@AuthenticationPrincipal UserDetails user) {
-        Utente utente = utenteRepository.findByEmail(user.getUsername())
-            .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
-
-        return ResponseEntity.ok(Map.of("saldo", utente.getSaldo()));
+    public ResponseEntity<SaldoResponse> obterSaldo(
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(carteiraService.obterSaldo(user.getUsername()));
     }
 
     @PostMapping("/carregamentos")
-    public ResponseEntity<?> carregarSaldo(
+    public ResponseEntity<SaldoResponse> carregarSaldo(
             @AuthenticationPrincipal UserDetails user,
-            @RequestBody Map<String, BigDecimal> body) {
+            @RequestBody CarregamentoRequest request) {
+        return ResponseEntity.ok(carteiraService.carregar(user.getUsername(), request));
+    }
 
-        BigDecimal valor = body.get("valor");
-        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Valor inválido");
-        }
-
-        Utente utente = utenteRepository.findByEmail(user.getUsername())
-            .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
-
-        utente.setSaldo(utente.getSaldo().add(valor));
-        utenteRepository.save(utente);
-
-        transacaoRepository.save(Transacao.builder()
-            .utente(utente)
-            .valor(valor)
-            .tipo(TipoTransacao.CARREGAMENTO)
-            .momento(LocalDateTime.now())
-            .descricao("Carregamento de saldo")
-            .build());
-
-        return ResponseEntity.ok(Map.of("saldo", utente.getSaldo()));
+    @GetMapping("/transacoes")
+    public ResponseEntity<List<TransacaoResponse>> historico(
+            @AuthenticationPrincipal UserDetails user,
+            @PageableDefault(size = 20, sort = "momento",
+                             direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(carteiraService.historico(user.getUsername(), pageable));
     }
 }

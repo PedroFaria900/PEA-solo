@@ -1,0 +1,19 @@
+info:
+  name: list-pack-tiers
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/admin/pack-tiers"
+  # Lista todos os tiers de pack activos.
+  # Requer autenticação de administrador (ROLE_ADMIN).
+  # Para tornar um utilizador admin: make admin-user (após make test-user).
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

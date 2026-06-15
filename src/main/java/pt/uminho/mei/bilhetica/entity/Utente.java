@@ -39,6 +39,11 @@ public class Utente {
     @Builder.Default
     private PerfilUtente perfil = PerfilUtente.NORMAL;
 
+    /** Se true, este utente tem permissões de administrador (ROLE_ADMIN). */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean admin = false;
+
     @Version
     private Long version;
 }

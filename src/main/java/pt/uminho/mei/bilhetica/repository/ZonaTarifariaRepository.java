@@ -4,6 +4,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pt.uminho.mei.bilhetica.entity.ZonaTarifaria;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,4 +33,7 @@ public interface ZonaTarifariaRepository extends JpaRepository<ZonaTarifaria, UU
     boolean isLinhaInZona(
         @Param("zonaId") UUID zonaId,
         @Param("linhaId") UUID linhaId);
+
+    @Query("SELECT DISTINCT z FROM ZonaTarifaria z JOIN z.paragens p WHERE p.id IN :paragemIds")
+    List<ZonaTarifaria> findByParagemIdsIn(@Param("paragemIds") Collection<UUID> paragemIds);
 }

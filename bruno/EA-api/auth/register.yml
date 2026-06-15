@@ -13,7 +13,8 @@ http:
         "nome": "João Silva",
         "email": "maria@email.com",
         "telemovel": "912345678",
-        "password": "password123"
+        "password": "password123",
+        "perfil": "NORMAL"
       }
   auth: inherit
 

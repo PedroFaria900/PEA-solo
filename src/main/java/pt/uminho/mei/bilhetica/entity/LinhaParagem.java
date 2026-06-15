@@ -27,7 +27,5 @@ public class LinhaParagem {
     @Column(nullable = false)
     private Integer sequencia;
 
-    private Integer distanciaMetros;
-
     private Integer tempoEstimadoSeg;
 }

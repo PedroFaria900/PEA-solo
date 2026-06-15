@@ -1,5 +1,6 @@
 package pt.uminho.mei.bilhetica.service;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import pt.uminho.mei.bilhetica.dto.ViagemResponse;
 import pt.uminho.mei.bilhetica.entity.Viagem;
@@ -22,19 +23,24 @@ public class ViagemService {
         this.utenteRepository = utenteRepository;
     }
 
-    public List<ViagemResponse> historico(String email) {
+    public List<ViagemResponse> historico(String email, Pageable pageable) {
         var utente = utenteRepository.findByEmail(email)
             .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
 
-        return viagemRepository.findByUtenteId(utente.getId())
+        return viagemRepository.findByUtenteId(utente.getId(), pageable)
             .stream()
             .map(this::toResponse)
             .collect(Collectors.toList());
     }
 
-    public ViagemResponse detalhe(UUID id) {
-        return toResponse(viagemRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Viagem não encontrada")));
+    public ViagemResponse detalhe(UUID id, String email) {
+        Viagem viagem = viagemRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Viagem não encontrada"));
+        String owner = viagem.getValidacao().getTitulo().getUtente().getEmail();
+        if (!owner.equals(email)) {
+            throw new RuntimeException("Viagem não encontrada");
+        }
+        return toResponse(viagem);
     }
 
     private ViagemResponse toResponse(Viagem v) {

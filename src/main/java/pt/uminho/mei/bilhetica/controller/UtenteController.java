@@ -4,41 +4,41 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import pt.uminho.mei.bilhetica.entity.Transacao;
-import pt.uminho.mei.bilhetica.entity.Utente;
-import pt.uminho.mei.bilhetica.enums.TipoTransacao;
-import pt.uminho.mei.bilhetica.repository.TransacaoRepository;
-import pt.uminho.mei.bilhetica.repository.UtenteRepository;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.Map;
+import pt.uminho.mei.bilhetica.dto.AlterarPasswordRequest;
+import pt.uminho.mei.bilhetica.dto.EditarPerfilRequest;
+import pt.uminho.mei.bilhetica.dto.PerfilResponse;
+import pt.uminho.mei.bilhetica.service.UtenteService;
 
 @RestController
 @RequestMapping("/api/utentes")
 public class UtenteController {
 
-    private final UtenteRepository utenteRepository;
-    private final TransacaoRepository transacaoRepository;
+    private final UtenteService utenteService;
 
-    public UtenteController(UtenteRepository utenteRepository,
-                            TransacaoRepository transacaoRepository) {
-        this.utenteRepository = utenteRepository;
-        this.transacaoRepository = transacaoRepository;
+    public UtenteController(UtenteService utenteService) {
+        this.utenteService = utenteService;
     }
 
     @GetMapping("/perfil")
-    public ResponseEntity<?> perfil(@AuthenticationPrincipal UserDetails user) {
-        Utente utente = utenteRepository.findByEmail(user.getUsername())
-            .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
-
-        return ResponseEntity.ok(Map.of(
-            "id", utente.getId(),
-            "nome", utente.getNome(),
-            "email", utente.getEmail(),
-            "saldo", utente.getSaldo()
-        ));
+    public ResponseEntity<PerfilResponse> perfil(
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(utenteService.perfil(user.getUsername()));
     }
 
+    @PutMapping("/perfil")
+    public ResponseEntity<PerfilResponse> atualizarPerfil(
+            @AuthenticationPrincipal UserDetails user,
+            @RequestBody EditarPerfilRequest request) {
+        return ResponseEntity.ok(utenteService.atualizarPerfil(
+            user.getUsername(), request.getNome(), request.getTelemovel()));
+    }
 
+    @PutMapping("/perfil/password")
+    public ResponseEntity<?> alterarPassword(
+            @AuthenticationPrincipal UserDetails user,
+            @RequestBody AlterarPasswordRequest request) {
+        utenteService.alterarPassword(
+            user.getUsername(), request.getPasswordAtual(), request.getPasswordNova());
+        return ResponseEntity.ok("Password alterada com sucesso");
+    }
 }

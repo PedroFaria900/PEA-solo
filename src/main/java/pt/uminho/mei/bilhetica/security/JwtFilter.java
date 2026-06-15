@@ -37,18 +37,24 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = header.substring(7);
 
-        if (jwtUtil.validarToken(token)) {
-            String email = jwtUtil.extrairEmail(token);
-            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+        try {
+            if (jwtUtil.validarToken(token)) {
+                String email = jwtUtil.extrairEmail(token);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken(
-                    userDetails, null, userDetails.getAuthorities());
+                UsernamePasswordAuthenticationToken auth =
+                    new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
 
-            auth.setDetails(new WebAuthenticationDetailsSource()
-                .buildDetails(request));
+                auth.setDetails(new WebAuthenticationDetailsSource()
+                    .buildDetails(request));
 
-            SecurityContextHolder.getContext().setAuthentication(auth);
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            }
+        } catch (Exception e) {
+            // Invalid/stale/orphaned token — degrade to anonymous so public routes
+            // (permitAll) still work; protected routes get a clean 403.
+            SecurityContextHolder.clearContext();
         }
 
         chain.doFilter(request, response);

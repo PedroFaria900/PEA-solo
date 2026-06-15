@@ -2,3 +2,17 @@ name: EA-api-dev
 variables:
   - name: baseUrl
     value: http://localhost:8080
+  - name: token
+    value: ""
+  # Preencher após seed: GET /api/linhas → GET /api/linhas/{id}/paragens → copiar paragemId
+  - name: origemId
+    value: ""
+  - name: destinoId
+    value: ""
+  # Preencher após seed: GET /api/catalogo/titulos → copiar id da zona (campo "id" no Tarifario)
+  # Use GET /api/catalogo/titulos e procure rows com "zona":"Zona A" / "zona":"Zona B"
+  # NOTA: para comprar com cobertura total (Rede completa) use zonasIds: [] em vez destes.
+  - name: zonaAId
+    value: ""
+  - name: zonaBId
+    value: ""

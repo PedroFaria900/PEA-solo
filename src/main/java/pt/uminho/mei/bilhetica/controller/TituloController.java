@@ -29,8 +29,9 @@ public class TituloController {
 
     @GetMapping("/{id}")
     public ResponseEntity<TituloResponse> detalhe(
+            @AuthenticationPrincipal UserDetails user,
             @PathVariable UUID id) {
-        return ResponseEntity.ok(tituloService.detalhe(id));
+        return ResponseEntity.ok(tituloService.detalhe(id, user.getUsername()));
     }
 
     @PostMapping
@@ -39,13 +40,5 @@ public class TituloController {
             @RequestBody ComprarTituloRequest request) {
         return ResponseEntity.status(201).body(
             tituloService.comprar(user.getUsername(), request));
-    }
-
-    @GetMapping("/{id}/token")
-    public ResponseEntity<TokenResponse> gerarToken(
-            @AuthenticationPrincipal UserDetails user,
-            @PathVariable UUID id) {
-        return ResponseEntity.ok(
-            tituloService.gerarToken(user.getUsername(), id));
     }
 }
