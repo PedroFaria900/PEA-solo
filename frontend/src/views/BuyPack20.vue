@@ -53,31 +53,19 @@
         </div>
 
         <div class="zone-grid">
-          <div 
-            class="zone-card" 
-            :class="{ active: selectedZone === 'Z1' }"
-            @click="selectedZone = 'Z1'"
-          >
+          <div class="zone-card" :class="{ active: selectedZone === 'Z1' }" @click="selectedZone = 'Z1'">
             <div class="z-badge" :class="{ active: selectedZone === 'Z1' }">Z1</div>
             <div class="z-title">1 Zona</div>
             <div class="z-price">16,00 €</div>
           </div>
 
-          <div 
-            class="zone-card" 
-            :class="{ active: selectedZone === 'Z2' }"
-            @click="selectedZone = 'Z2'"
-          >
+          <div class="zone-card" :class="{ active: selectedZone === 'Z2' }" @click="selectedZone = 'Z2'">
             <div class="z-badge" :class="{ active: selectedZone === 'Z2' }">Z2</div>
             <div class="z-title">Até 2 Zonas</div>
             <div class="z-price">24,00 €</div>
           </div>
           
-          <div 
-            class="zone-card" 
-            :class="{ active: selectedZone === 'Z3' }"
-            @click="selectedZone = 'Z3'"
-          >
+          <div class="zone-card" :class="{ active: selectedZone === 'Z3' }" @click="selectedZone = 'Z3'">
             <div class="z-badge" :class="{ active: selectedZone === 'Z3' }">Z3</div>
             <div class="z-title">Até 3 Zonas</div>
             <div class="z-price">32,00 €</div>
@@ -181,14 +169,29 @@
     </div>
 
     <div class="bottom-action">
-      <button class="btn-confirmar blue-btn" @click="confirmarCompra" :disabled="isProcessing || !selectedZone">
-        {{ isProcessing ? 'A processar...' : `Confirmar e Pagar ${formattedFinalPrice}€` }}
+      <button class="btn-confirmar blue-btn" @click="showConfirmModal = true" :disabled="isProcessing || !selectedZone">
+        Pagar {{ formattedFinalPrice }}€
       </button>
     </div>
 
+    <ConfirmModal 
+      :show="showConfirmModal"
+      :summaryTitle="'Pack 20 Bilhetes (' + selectedZone + ')'"
+      :summaryPrice="formattedFinalPrice + '€'"
+      :isProcessing="isProcessing"
+      @confirm="confirmarCompra"
+      @cancel="showConfirmModal = false"
+    />
+
+    <InsufficientBalanceModal 
+      :show="paymentStatus === 'error'"
+      @close="fecharModal"
+      @charge="irParaCarregarCarteira"
+    />
+
     <transition name="modal-fade">
-      <div v-if="paymentStatus" class="modal-overlay">
-        <div v-if="paymentStatus === 'success'" class="modal-card">
+      <div v-if="paymentStatus === 'success'" class="modal-overlay">
+        <div class="modal-card">
           <div class="modal-top success-bg">
             <div class="icon-overlap">
               <div class="circle-icon green-circle">
@@ -219,42 +222,10 @@
             <button class="btn-primary-modal blue-btn" @click="irParaBilhetes">Ver os meus bilhetes</button>
           </div>
         </div>
-
-        <div v-if="paymentStatus === 'error'" class="modal-card">
-          <div class="modal-top error-bg">
-            <div class="icon-overlap">
-              <div class="circle-icon red-circle">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </div>
-            </div>
-          </div>
-          
-          <div class="modal-body">
-            <h2>Pagamento Recusado</h2>
-            <p>Não foi possível processar a transação. Verifica o teu saldo ou tenta outro método de pagamento.</p>
-            
-            <button class="btn-primary-modal blue-btn" @click="fecharModal">Tentar novamente</button>
-          </div>
-        </div>
       </div>
     </transition>
 
   </div>
-
-  <button @click="showConfirmModal = true">Pagar {{ formattedFinalPrice }}€</button>
-
-  <ConfirmModal 
-    :show="showConfirmModal"
-    :summaryTitle="'Pack 10 Bilhetes (' + selectedZone + ')'"
-    :summaryPrice="formattedFinalPrice + '€'"
-    :isProcessing="isProcessing"
-    @confirm="processarPagamento"
-    @cancel="showConfirmModal = false"
-  />
-
 </template>
 
 <script setup>
@@ -262,17 +233,17 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
 import ConfirmModal from '../components/ConfirmModal.vue'
+import InsufficientBalanceModal from '../components/InsufficientBalanceModal.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const showConfirmModal = ref(false)
-
 // ── Estado ──
-const selectedZone = ref('Z1') // Começa com Z1 pre-selecionado
-const selectedMethod = ref('wallet') // Igual ao Anual
+const selectedZone = ref('Z1')
+const selectedMethod = ref('wallet')
 const isProcessing = ref(false)
 const paymentStatus = ref(null)
+const showConfirmModal = ref(false)
 
 // Lógica de cálculo de preços (20 bilhetes com 20% desconto)
 const prices = {
@@ -313,6 +284,7 @@ const confirmarCompra = () => {
   }, 1200)
 }
 
+// ── Ações dos Modais ──
 const fecharModal = () => {
   paymentStatus.value = null
 }
@@ -320,6 +292,11 @@ const fecharModal = () => {
 const irParaBilhetes = () => {
   paymentStatus.value = null
   router.push('/trips')
+}
+
+const irParaCarregarCarteira = () => {
+  paymentStatus.value = null
+  router.push('/ChargeWallet')
 }
 </script>
 
@@ -568,7 +545,7 @@ const irParaBilhetes = () => {
   color: #7A3FF2;
 }
 
-/* ── Payment Options (Igual BuyAnualPass) ── */
+/* ── Payment Options ── */
 .payment-list {
   display: flex;
   flex-direction: column;
@@ -649,7 +626,7 @@ const irParaBilhetes = () => {
 
 .sr-only { display: none; }
 
-/* ── Summary Card (Resumo da Compra) ── */
+/* ── Summary Card ── */
 .summary-card {
   margin-bottom: 24px;
 }
@@ -728,7 +705,7 @@ const irParaBilhetes = () => {
   color: #7A3FF2;
 }
 
-/* ── Botão fixo (Igual ao Passe Anual, levantado da Navbar) ── */
+/* ── Botão fixo ── */
 .bottom-action {
   position: fixed;
   bottom: 80px; 
@@ -753,7 +730,7 @@ const irParaBilhetes = () => {
 }
 
 .btn-confirmar.blue-btn {
-  background: #7A3FF2; /* Alterado para roxo para combinar com o pack */
+  background: #7A3FF2;
   box-shadow: 0 4px 14px rgba(122, 63, 242, 0.3);
 }
 
@@ -809,7 +786,6 @@ const irParaBilhetes = () => {
   justify-content: center;
 }
 .success-bg { background: #E7F6EC; }
-.error-bg { background: #FBEAE8; }
 
 .icon-overlap {
   position: absolute;
@@ -832,7 +808,6 @@ const irParaBilhetes = () => {
   justify-content: center;
 }
 .green-circle { background: #1F9D4D; }
-.red-circle { background: #D63A2E; }
 
 .modal-body {
   padding: 60px 24px 24px 24px;

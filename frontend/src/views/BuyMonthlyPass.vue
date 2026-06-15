@@ -18,8 +18,8 @@
       </div>
 
       <div class="hero-pass-info">
-        <h2 class="hero-title">Passe 30 Dias</h2>
-        <p class="hero-subtitle">Viagens ilimitadas nas zonas escolhidas</p>
+        <h2 class="hero-title">Passe Mensal</h2>
+        <p class="hero-subtitle">Viagens ilimitadas durante 30 dias nas zonas escolhidas</p>
       </div>
 
       <div class="hero-meta">
@@ -217,14 +217,29 @@
     </div>
 
     <div class="bottom-action">
-      <button class="btn-confirmar blue-btn" @click="confirmarCompra" :disabled="isProcessing || selectedZones.length === 0">
-        {{ isProcessing ? 'A processar...' : (selectedZones.length === 0 ? 'Seleciona uma Zona' : `Confirmar e Pagar ${formattedFinalPrice}€`) }}
+      <button class="btn-confirmar blue-btn" @click="showConfirmModal = true" :disabled="selectedZones.length === 0 || isProcessing">
+        Pagar {{ formattedFinalPrice }}€
       </button>
     </div>
 
+    <ConfirmModal 
+      :show="showConfirmModal"
+      :summaryTitle="'Passe Mensal (Zonas ' + selectedZones.join(', ') + ')'"
+      :summaryPrice="formattedFinalPrice + '€'"
+      :isProcessing="isProcessing"
+      @confirm="confirmarCompra"
+      @cancel="showConfirmModal = false"
+    />
+
+    <InsufficientBalanceModal 
+      :show="paymentStatus === 'error'"
+      @close="fecharModal"
+      @charge="irParaCarregarCarteira"
+    />
+
     <transition name="modal-fade">
-      <div v-if="paymentStatus" class="modal-overlay">
-        <div v-if="paymentStatus === 'success'" class="modal-card">
+      <div v-if="paymentStatus === 'success'" class="modal-overlay">
+        <div class="modal-card">
           <div class="modal-top success-bg">
             <div class="icon-overlap">
               <div class="circle-icon green-circle">
@@ -255,26 +270,6 @@
             <button class="btn-primary-modal blue-btn" @click="irParaBilhetes">Ver o meu passe</button>
           </div>
         </div>
-
-        <div v-if="paymentStatus === 'error'" class="modal-card">
-          <div class="modal-top error-bg">
-            <div class="icon-overlap">
-              <div class="circle-icon red-circle">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </div>
-            </div>
-          </div>
-          
-          <div class="modal-body">
-            <h2>Pagamento Recusado</h2>
-            <p>Não foi possível processar a transação. Verifica o teu saldo ou tenta outro método de pagamento.</p>
-            
-            <button class="btn-primary-modal blue-btn" @click="fecharModal">Tentar novamente</button>
-          </div>
-        </div>
       </div>
     </transition>
 
@@ -285,27 +280,30 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
+import ConfirmModal from '../components/ConfirmModal.vue'
+import InsufficientBalanceModal from '../components/InsufficientBalanceModal.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 // ── Estado ──
-const selectedZones = ref([1]) // Zona 1 selecionada por defeito
+const selectedZones = ref([1]) 
 const selectedMethod = ref('wallet')
 const isProcessing = ref(false)
 const paymentStatus = ref(null)
+const showConfirmModal = ref(false)
 
 // ── Lógica do Estatuto e Preços ──
-const precoPorZona = 30 // 30€ base por zona no passe mensal
+const precoPorZona = 30 // Exemplo: Passe Mensal a 30€ por Zona
 const userBalance = computed(() => authStore.userSaldo || 0)
 
-// Simulação de estatuto (No futuro vem de authStore.user?.estatuto)
+// Simulação de estatuto
 const userStatus = ref('Estudante') 
 
 const discount = computed(() => {
-  if (userStatus.value === 'Estudante') return 0.50 // 50% de desconto
-  if (userStatus.value === 'Senior') return 0.25 // 25% de desconto
-  return 0 // Normal (Sem desconto)
+  if (userStatus.value === 'Estudante') return 0.50 
+  if (userStatus.value === 'Senior') return 0.25 
+  return 0 
 })
 
 const basePrice = computed(() => selectedZones.value.length * precoPorZona)
@@ -316,12 +314,12 @@ const formattedBasePrice = computed(() => basePrice.value.toFixed(2).replace('.'
 const formattedDiscountValue = computed(() => discountValue.value.toFixed(2).replace('.', ','))
 const formattedFinalPrice = computed(() => finalPrice.value.toFixed(2).replace('.', ','))
 
-// ── Lógica de Datas (Hoje até Hoje + 30 dias) ──
+// ── Lógica de Datas (Hoje até Hoje + 30 Dias) ──
 const today = new Date()
 const nextMonth = new Date(today)
 nextMonth.setDate(today.getDate() + 30)
 
-const dateOptions = { day: 'numeric', month: 'short' }
+const dateOptions = { day: 'numeric', month: 'short', year: 'numeric' }
 const dataInicio = new Intl.DateTimeFormat('pt-PT', dateOptions).format(today)
 const dataFim = new Intl.DateTimeFormat('pt-PT', dateOptions).format(nextMonth)
 
@@ -331,14 +329,13 @@ const confirmarCompra = () => {
 
   setTimeout(() => {
     isProcessing.value = false
+    showConfirmModal.value = false
     
-    // Regra de Erro: Se usar a carteira e o saldo for insuficiente face ao preço FINAL
     if (selectedMethod.value === 'wallet' && userBalance.value < finalPrice.value) {
       paymentStatus.value = 'error'
       return
     }
 
-    // Sucesso
     if (selectedMethod.value === 'wallet' && authStore.user) {
       authStore.user.saldo -= finalPrice.value
     }
@@ -347,6 +344,7 @@ const confirmarCompra = () => {
   }, 1200)
 }
 
+// ── Ações dos Modais ──
 const fecharModal = () => {
   paymentStatus.value = null
 }
@@ -354,6 +352,11 @@ const fecharModal = () => {
 const irParaBilhetes = () => {
   paymentStatus.value = null
   router.push('/trips')
+}
+
+const irParaCarregarCarteira = () => {
+  paymentStatus.value = null
+  router.push('/ChargeWallet')
 }
 </script>
 
@@ -375,7 +378,7 @@ const irParaBilhetes = () => {
 }
 
 .blue-hero {
-  background: linear-gradient(135deg, #1F6FE0 0%, #217DF7 58%, #4A9BFF 100%);
+  background: linear-gradient(135deg, #0085FF 0%, #0070D6 100%);
 }
 
 .back-btn {
@@ -901,7 +904,9 @@ const irParaBilhetes = () => {
   box-shadow: none;
 }
 
-/* ── Modais ── */
+/* =========================================
+   MODAL DE SUCESSO (Apenas este, já que erro está no componente)
+   ========================================= */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -938,8 +943,8 @@ const irParaBilhetes = () => {
   display: flex;
   justify-content: center;
 }
+
 .success-bg { background: #E7F6EC; }
-.error-bg { background: #FBEAE8; }
 
 .icon-overlap {
   position: absolute;
@@ -962,7 +967,6 @@ const irParaBilhetes = () => {
   justify-content: center;
 }
 .green-circle { background: #1F9D4D; }
-.red-circle { background: #D63A2E; }
 
 .modal-body {
   padding: 60px 24px 24px 24px;
@@ -998,13 +1002,12 @@ const irParaBilhetes = () => {
   width: 38px;
   height: 38px;
   border-radius: 10px;
+  background: #EAF4FF;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-
-.receipt-icon.blue-bg { background: #EAF4FF; }
 
 .receipt-info h4 {
   font-size: 15px;
@@ -1020,6 +1023,8 @@ const irParaBilhetes = () => {
 
 .btn-primary-modal {
   width: 100%;
+  background: #0085FF;
+  color: #FFFFFF;
   border: none;
   border-radius: 27px;
   height: 54px;
@@ -1029,14 +1034,9 @@ const irParaBilhetes = () => {
   transition: all 0.2s;
 }
 
-.btn-primary-modal.blue-btn {
-  background: #0085FF;
-  color: #FFFFFF;
-}
-
-.btn-primary-modal.blue-btn:active {
+.btn-primary-modal:active {
   transform: scale(0.96);
-  background: #0070D6;
+  background: #0073E6;
 }
 
 .modal-fade-enter-active, .modal-fade-leave-active {

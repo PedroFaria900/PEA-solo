@@ -14,7 +14,7 @@
           <rect x="2" y="5" width="20" height="14" rx="2"/>
           <path d="M2 10h20"/>
         </svg>
-        AUTOCARRO · PACK DE 10 BILHETES
+        AUTOCARRO · PACK DE BILHETES
       </div>
 
       <div class="hero-pass-info">
@@ -28,7 +28,7 @@
             <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
-          {{ selectedZones.length }} zona{{ selectedZones.length > 1 ? 's' : '' }}
+          Zona {{ selectedZone.replace('Z', '') }}
         </span>
         <span class="hero-meta-sep">·</span>
         <span class="hero-meta-item">
@@ -48,23 +48,28 @@
           <div class="step-num active">1</div>
           <div class="step-label-group">
             <span class="step-label">Zonas Abrangidas</span>
-            <span class="step-sublabel">Escolhe as zonas para os teus bilhetes</span>
+            <span class="step-sublabel">Escolhe as zonas para os teus 10 bilhetes</span>
           </div>
         </div>
 
-        <div class="zone-list">
-          <label class="zone-option" v-for="zona in 3" :key="zona" :class="{ selected: selectedZones.includes(zona) }">
-            <div class="zone-info">
-              <span class="zone-name">Zona {{ zona }}</span>
-              <span class="zone-desc">Acesso a bilhetes válidos na Zona {{ zona }}</span>
-            </div>
-            <div class="checkbox-outer" :class="{ active: selectedZones.includes(zona) }">
-              <svg v-if="selectedZones.includes(zona)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </div>
-            <input type="checkbox" :value="zona" v-model="selectedZones" class="sr-only"/>
-          </label>
+        <div class="zone-grid">
+          <div class="zone-card" :class="{ active: selectedZone === 'Z1' }" @click="selectedZone = 'Z1'">
+            <div class="z-badge" :class="{ active: selectedZone === 'Z1' }">Z1</div>
+            <div class="z-title">1 Zona</div>
+            <div class="z-price">9,00 €</div>
+          </div>
+
+          <div class="zone-card" :class="{ active: selectedZone === 'Z2' }" @click="selectedZone = 'Z2'">
+            <div class="z-badge" :class="{ active: selectedZone === 'Z2' }">Z2</div>
+            <div class="z-title">Até 2 Zonas</div>
+            <div class="z-price">13,50 €</div>
+          </div>
+          
+          <div class="zone-card" :class="{ active: selectedZone === 'Z3' }" @click="selectedZone = 'Z3'">
+            <div class="z-badge" :class="{ active: selectedZone === 'Z3' }">Z3</div>
+            <div class="z-title">Até 3 Zonas</div>
+            <div class="z-price">18,00 €</div>
+          </div>
         </div>
       </div>
 
@@ -137,8 +142,8 @@
             <span class="summary-value">10 Bilhetes</span>
           </div>
           <div class="summary-row">
-            <span class="summary-label">Zonas</span>
-            <span class="summary-value">{{ selectedZones.length > 0 ? selectedZones.join(', ') : '-' }}</span>
+            <span class="summary-label">Zonas Abrangidas</span>
+            <span class="summary-value">{{ selectedZone }}</span>
           </div>
           
           <div class="summary-divider"></div>
@@ -148,7 +153,7 @@
             <span class="summary-value">{{ formattedBasePrice }}€</span>
           </div>
           <div class="summary-row text-green">
-            <span class="summary-label">Desconto Pack (10%)</span>
+            <span class="summary-label">Desconto de Pack (10%)</span>
             <span class="summary-value">-{{ formattedDiscountValue }}€</span>
           </div>
           
@@ -164,14 +169,29 @@
     </div>
 
     <div class="bottom-action">
-      <button class="btn-confirmar blue-btn" @click="confirmarCompra" :disabled="isProcessing || selectedZones.length === 0">
-        {{ isProcessing ? 'A processar...' : (selectedZones.length === 0 ? 'Seleciona uma Zona' : `Confirmar e Pagar ${formattedFinalPrice}€`) }}
+      <button class="btn-confirmar blue-btn" @click="showConfirmModal = true" :disabled="isProcessing || !selectedZone">
+        {{ isProcessing ? 'A processar...' : `Pagar ${formattedFinalPrice}€` }}
       </button>
     </div>
 
+    <ConfirmModal 
+      :show="showConfirmModal"
+      :summaryTitle="'Pack 10 Bilhetes (' + selectedZone + ')'"
+      :summaryPrice="formattedFinalPrice + '€'"
+      :isProcessing="isProcessing"
+      @confirm="confirmarCompra"
+      @cancel="showConfirmModal = false"
+    />
+
+    <InsufficientBalanceModal 
+      :show="paymentStatus === 'error'"
+      @close="fecharModal"
+      @charge="irParaCarregarCarteira"
+    />
+
     <transition name="modal-fade">
-      <div v-if="paymentStatus" class="modal-overlay">
-        <div v-if="paymentStatus === 'success'" class="modal-card">
+      <div v-if="paymentStatus === 'success'" class="modal-overlay">
+        <div class="modal-card">
           <div class="modal-top success-bg">
             <div class="icon-overlap">
               <div class="circle-icon green-circle">
@@ -184,7 +204,7 @@
           
           <div class="modal-body">
             <h2>Pagamento Concluído!</h2>
-            <p>O teu Pack de 10 Bilhetes foi adicionado à tua conta com sucesso.</p>
+            <p>O teu Pack de 10 Bilhetes foi adicionado à tua conta com sucesso e já o podes utilizar.</p>
             
             <div class="receipt-box">
               <div class="receipt-icon blue-bg">
@@ -194,32 +214,12 @@
                 </svg>
               </div>
               <div class="receipt-info">
-                <h4>Pack 10 Bilhetes (Zonas {{ selectedZones.join(', ') }})</h4>
+                <h4>Pack 10 Bilhetes ({{ selectedZone }})</h4>
                 <span>Total pago: {{ formattedFinalPrice }}€</span>
               </div>
             </div>
 
             <button class="btn-primary-modal blue-btn" @click="irParaBilhetes">Ver os meus bilhetes</button>
-          </div>
-        </div>
-
-        <div v-if="paymentStatus === 'error'" class="modal-card">
-          <div class="modal-top error-bg">
-            <div class="icon-overlap">
-              <div class="circle-icon red-circle">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </div>
-            </div>
-          </div>
-          
-          <div class="modal-body">
-            <h2>Pagamento Recusado</h2>
-            <p>Não foi possível processar a transação. Verifica o teu saldo ou tenta outro método de pagamento.</p>
-            
-            <button class="btn-primary-modal blue-btn" @click="fecharModal">Tentar novamente</button>
           </div>
         </div>
       </div>
@@ -232,50 +232,50 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
+import ConfirmModal from '../components/ConfirmModal.vue'
+import InsufficientBalanceModal from '../components/InsufficientBalanceModal.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 // ── Estado ──
-const selectedZones = ref([1]) // Zona 1 selecionada por defeito
+const selectedZone = ref('Z1')
 const selectedMethod = ref('wallet')
 const isProcessing = ref(false)
 const paymentStatus = ref(null)
+const showConfirmModal = ref(false)
 
-// Saldo do Utilizador
-const userBalance = computed(() => authStore.userSaldo || 0)
+// Lógica de cálculo de preços (10 bilhetes com 10% desconto)
+const prices = {
+  'Z1': { base: 10.00, discount: 1.00, total: 9.00 },
+  'Z2': { base: 15.00, discount: 1.50, total: 13.50 },
+  'Z3': { base: 20.00, discount: 2.00, total: 18.00 }
+}
 
-// ── Lógica de Cálculo de Preços para Packs ──
-const basePrice = computed(() => {
-  const numZonas = selectedZones.value.length
-  if (numZonas === 1) return 10
-  if (numZonas === 2) return 15
-  if (numZonas === 3) return 20
-  return 0
-})
-
-// Pack de 10 oferece 10% de desconto no total
-const discountValue = computed(() => basePrice.value * 0.10)
-const finalPrice = computed(() => basePrice.value - discountValue.value)
+const basePrice = computed(() => prices[selectedZone.value].base)
+const discountValue = computed(() => prices[selectedZone.value].discount)
+const finalPrice = computed(() => prices[selectedZone.value].total)
 
 const formattedBasePrice = computed(() => basePrice.value.toFixed(2).replace('.', ','))
 const formattedDiscountValue = computed(() => discountValue.value.toFixed(2).replace('.', ','))
 const formattedFinalPrice = computed(() => finalPrice.value.toFixed(2).replace('.', ','))
 
-// ── Confirmar compra ──
+// Saldo do Utilizador
+const userBalance = computed(() => authStore.userSaldo || 0)
+
+// ── Lógica de Confirmação ──
 const confirmarCompra = () => {
   isProcessing.value = true
 
   setTimeout(() => {
     isProcessing.value = false
+    showConfirmModal.value = false
     
-    // Verifica se há saldo suficiente quando paga com carteira
     if (selectedMethod.value === 'wallet' && userBalance.value < finalPrice.value) {
       paymentStatus.value = 'error'
       return
     }
 
-    // Abate o saldo (simulação simples, em cenário real enviar para o backend)
     if (selectedMethod.value === 'wallet' && authStore.user) {
       authStore.user.saldo -= finalPrice.value
     }
@@ -284,6 +284,7 @@ const confirmarCompra = () => {
   }, 1200)
 }
 
+// ── Ações dos Modais ──
 const fecharModal = () => {
   paymentStatus.value = null
 }
@@ -291,6 +292,11 @@ const fecharModal = () => {
 const irParaBilhetes = () => {
   paymentStatus.value = null
   router.push('/trips')
+}
+
+const irParaCarregarCarteira = () => {
+  paymentStatus.value = null
+  router.push('/ChargeWallet')
 }
 </script>
 
@@ -300,11 +306,11 @@ const irParaBilhetes = () => {
   background: #F4F5F7;
   min-height: 100vh;
   font-family: 'Roboto', sans-serif;
-  padding-bottom: 160px; /* Espaço ajustado para botão não tapar conteúdo nem navbar */
+  padding-bottom: 130px;
   box-sizing: border-box;
 }
 
-/* ── Hero Card Roxo (Cantos inferiores retos) ── */
+/* ── Hero Card Roxo (Sem radius inferior) ── */
 .pack-hero {
   background: linear-gradient(135deg, #5B2EC2 0%, #7A3FF2 60%, #9D6BFF 100%);
   padding: 52px 28px 36px 28px;
@@ -346,537 +352,94 @@ const irParaBilhetes = () => {
   margin-bottom: 16px;
 }
 
-.hero-pass-info {
-  margin-bottom: 16px;
-}
+.hero-pass-info { margin-bottom: 16px; }
+.hero-title { font-size: 28px; font-weight: 700; color: #fff; margin: 0 0 4px 0; }
+.hero-subtitle { font-size: 14px; color: rgba(255,255,255,0.85); margin: 0; }
 
-.hero-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #fff;
-  margin: 0 0 4px 0;
-}
+.hero-meta { display: flex; align-items: center; gap: 8px; }
+.hero-meta-item { display: flex; align-items: center; gap: 4px; font-size: 13px; color: rgba(255,255,255,0.9); font-weight: 500; }
+.hero-price { font-size: 16px; font-weight: 700; color: #fff; }
+.hero-price-strikethrough { font-size: 13px; color: rgba(255, 255, 255, 0.6); text-decoration: line-through; margin-right: 6px; font-weight: 500; }
+.hero-meta-sep { color: rgba(255,255,255,0.5); }
 
-.hero-subtitle {
-  font-size: 14px;
-  color: rgba(255,255,255,0.85);
-  margin: 0;
-}
+.hero-circle-1 { position: absolute; top: -60px; right: -60px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255,255,255,0.08); pointer-events: none; }
+.hero-circle-2 { position: absolute; bottom: -80px; right: -30px; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.07); pointer-events: none; }
 
-.hero-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+.body-content { padding: 20px 16px 0 16px; display: flex; flex-direction: column; gap: 12px; }
 
-.hero-meta-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  color: rgba(255,255,255,0.9);
-  font-weight: 500;
-}
+.step-card { background: #fff; border-radius: 20px; padding: 20px; box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 4px 14px rgba(16,24,40,0.06); }
+.step-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.step-num { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.step-num.active { background: #7A3FF2; color: #fff; }
+.step-label-group { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.step-label { font-size: 15px; font-weight: 700; color: #15171A; }
+.step-sublabel { font-size: 12px; color: #9AA0A6; }
 
-.hero-price {
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
-}
+.zone-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.zone-card { background: #fff; border-radius: 14px; padding: 16px 12px; border: 2px solid #E4E7EB; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.zone-card.active { border-color: #7A3FF2; background: #F9F7FF; }
+.z-badge { background: #F4F5F7; color: #6B7077; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px; display: inline-block; margin-bottom: 10px; transition: all 0.2s; }
+.z-badge.active { background: #7A3FF2; color: #fff; }
+.z-title { font-size: 12px; font-weight: 600; color: #6B7077; margin-bottom: 4px; }
+.zone-card.active .z-title { color: #1A1A1A; }
+.z-price { font-size: 16px; font-weight: 800; color: #1A1A1A; }
+.zone-card.active .z-price { color: #7A3FF2; }
 
-.hero-price-strikethrough {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
-  text-decoration: line-through;
-  margin-right: 6px;
-  font-weight: 500;
-}
-
-.hero-meta-sep {
-  color: rgba(255,255,255,0.5);
-}
-
-.hero-circle-1 {
-  position: absolute;
-  top: -60px;
-  right: -60px;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.08);
-  pointer-events: none;
-}
-
-.hero-circle-2 {
-  position: absolute;
-  bottom: -80px;
-  right: -30px;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.07);
-  pointer-events: none;
-}
-
-/* ── Corpo ── */
-.body-content {
-  padding: 20px 16px 0 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* ── Step Card ── */
-.step-card {
-  background: #fff;
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 4px 14px rgba(16,24,40,0.06);
-}
-
-.step-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.step-num {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.step-num.active {
-  background: #7A3FF2; /* Atualizado para condizer com o tema Pack Roxo */
-  color: #fff;
-}
-
-.step-label-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.step-label {
-  font-size: 15px;
-  font-weight: 700;
-  color: #15171A;
-}
-
-.step-sublabel {
-  font-size: 12px;
-  color: #9AA0A6;
-}
-
-/* ── Seleção de Zonas (Igual ao Passe Anual) ── */
-.zone-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.zone-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px;
-  border: 1.5px solid #E4E7EB;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.zone-option.selected {
-  border-color: #7A3FF2;
-  background: #F9F7FF;
-}
-
-.zone-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.zone-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: #15171A;
-}
-
-.zone-desc {
-  font-size: 13px;
-  color: #6B7077;
-}
-
-.checkbox-outer {
-  width: 22px;
-  height: 22px;
-  border: 2px solid #D0D5DD;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.checkbox-outer.active {
-  background: #7A3FF2;
-  border-color: #7A3FF2;
-}
-
-/* ── Payment Options ── */
-.payment-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.pay-option {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px;
-  border: 1.5px solid #E4E7EB;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.pay-option.selected {
-  border-color: #0085FF;
-  background: #F5FAFF;
-}
-
-.pay-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
+.payment-list { display: flex; flex-direction: column; gap: 10px; }
+.pay-option { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1.5px solid #E4E7EB; border-radius: 14px; cursor: pointer; transition: all 0.2s; }
+.pay-option.selected { border-color: #7A3FF2; background: #F9F7FF; }
+.pay-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .pay-icon.blue-bg { background: rgba(0,133,255,0.1); }
 .pay-icon.dark-bg { background: #15171A; }
-
-.pay-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.pay-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #15171A;
-}
-
-.pay-desc {
-  font-size: 12px;
-  color: #6B7077;
-}
-
+.pay-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.pay-name { font-size: 15px; font-weight: 600; color: #15171A; }
+.pay-desc { font-size: 12px; color: #6B7077; }
 .text-red { color: #EF4444 !important; }
-
-.radio-outer {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #D0D5DD;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: border-color 0.2s;
-}
-
-.radio-outer.active {
-  border-color: #0085FF;
-}
-
-.radio-inner {
-  width: 10px;
-  height: 10px;
-  background: #0085FF;
-  border-radius: 50%;
-}
-
+.radio-outer { width: 20px; height: 20px; border: 2px solid #D0D5DD; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: border-color 0.2s; }
+.radio-outer.active { border-color: #7A3FF2; }
+.radio-inner { width: 10px; height: 10px; background: #7A3FF2; border-radius: 50%; }
 .sr-only { display: none; }
 
-/* ── Summary Card (Resumo da Compra) ── */
-.summary-card {
-  margin-bottom: 24px;
-}
+.summary-card { margin-bottom: 24px; }
+.summary-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.summary-icon { width: 32px; height: 32px; background: #F9F7FF; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.summary-title { font-size: 16px; font-weight: 700; color: #15171A; margin: 0; }
+.summary-content { display: flex; flex-direction: column; gap: 10px; }
+.summary-row { display: flex; justify-content: space-between; align-items: center; }
+.summary-label { font-size: 13px; color: #6B7077; }
+.summary-value { font-size: 14px; font-weight: 600; color: #15171A; }
+.summary-divider { height: 1px; background: #E4E7EB; margin: 4px 0; }
+.text-green .summary-label, .text-green .summary-value { color: #1F9D4D; }
+.final-price { margin-top: 4px; }
+.final-price .summary-label { font-size: 15px; font-weight: 700; color: #15171A; }
+.summary-value-large { font-size: 18px; font-weight: 800; color: #7A3FF2; }
 
-.summary-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-}
+.bottom-action { position: fixed; bottom: 80px; left: 0; width: 100%; padding: 14px 16px 18px 16px; background: linear-gradient(to top, rgba(244,245,247,1) 80%, rgba(244,245,247,0)); z-index: 50; box-sizing: border-box; }
+.btn-confirmar { width: 100%; height: 56px; color: #fff; border: none; border-radius: 999px; font-size: 16px; font-weight: 700; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+.btn-confirmar.blue-btn { background: #7A3FF2; box-shadow: 0 4px 14px rgba(122, 63, 242, 0.3); }
+.btn-confirmar:active:not(:disabled) { transform: scale(0.98); }
+.btn-confirmar:hover:not(:disabled) { background: #622CC2; }
+.btn-confirmar:disabled { background: #D8C3FF; cursor: not-allowed; box-shadow: none; }
 
-.summary-icon {
-  width: 32px;
-  height: 32px;
-  background: #F9F7FF;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.summary-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #15171A;
-  margin: 0;
-}
-
-.summary-content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.summary-label {
-  font-size: 13px;
-  color: #6B7077;
-}
-
-.summary-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: #15171A;
-}
-
-.summary-divider {
-  height: 1px;
-  background: #E4E7EB;
-  margin: 4px 0;
-}
-
-.text-green .summary-label, 
-.text-green .summary-value {
-  color: #1F9D4D;
-}
-
-.final-price {
-  margin-top: 4px;
-}
-
-.final-price .summary-label {
-  font-size: 15px;
-  font-weight: 700;
-  color: #15171A;
-}
-
-.summary-value-large {
-  font-size: 18px;
-  font-weight: 800;
-  color: #7A3FF2;
-}
-
-/* ── Botão fixo (Levantado da NavBar) ── */
-.bottom-action {
-  position: fixed;
-  bottom: 80px; /* Espaço para estar perfeitamente acima da navbar */
-  left: 0;
-  right: 0;
-  padding: 16px 20px;
-  background: #F4F5F7; /* Tapa o espaço entre o botão e o fim */
-  z-index: 50;
-  box-sizing: border-box;
-}
-
-.btn-confirmar {
-  width: 100%;
-  height: 56px;
-  color: #fff;
-  border: none;
-  border-radius: 999px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
-}
-
-.btn-confirmar.blue-btn {
-  background: #0085FF;
-  box-shadow: 0 4px 14px rgba(0,133,255,0.3);
-}
-
-.btn-confirmar:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.btn-confirmar:hover:not(:disabled) {
-  background: #0073E6;
-}
-
-.btn-confirmar:disabled {
-  background: #A3CFFF;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-/* ── Modais ── */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(11, 16, 24, 0.5);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-.modal-card {
-  background: #FFFFFF;
-  border-radius: 24px;
-  width: 100%;
-  max-width: 340px;
-  overflow: hidden;
-  box-shadow: 0px 24px 60px rgba(0, 0, 0, 0.28);
-  animation: popUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes popUp {
-  0% { transform: scale(0.95) translateY(20px); opacity: 0; }
-  100% { transform: scale(1) translateY(0); opacity: 1; }
-}
-
-.modal-top {
-  height: 160px;
-  position: relative;
-  display: flex;
-  justify-content: center;
-}
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 16, 24, 0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+.modal-card { background: #FFFFFF; border-radius: 24px; width: 100%; max-width: 340px; overflow: hidden; box-shadow: 0px 24px 60px rgba(0, 0, 0, 0.28); animation: popUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes popUp { 0% { transform: scale(0.95) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+.modal-top { height: 160px; position: relative; display: flex; justify-content: center; }
 .success-bg { background: #E7F6EC; }
-.error-bg { background: #FBEAE8; }
-
-.icon-overlap {
-  position: absolute;
-  bottom: -42px; 
-  background: #FFFFFF;
-  width: 84px;
-  height: 84px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.circle-icon {
-  width: 62px;
-  height: 62px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+.icon-overlap { position: absolute; bottom: -42px; background: #FFFFFF; width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.circle-icon { width: 62px; height: 62px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 .green-circle { background: #1F9D4D; }
-.red-circle { background: #D63A2E; }
-
-.modal-body {
-  padding: 60px 24px 24px 24px;
-  text-align: center;
-}
-
-.modal-body h2 {
-  font-size: 22px;
-  font-weight: 700;
-  color: #15171A;
-  margin: 0 0 8px 0;
-}
-
-.modal-body p {
-  font-size: 14px;
-  color: #6B7077;
-  line-height: 1.5;
-  margin: 0 0 24px 0;
-}
-
-.receipt-box {
-  background: #F7F8FA;
-  border-radius: 14px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 24px;
-  text-align: left;
-}
-
-.receipt-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
+.modal-body { padding: 60px 24px 24px 24px; text-align: center; }
+.modal-body h2 { font-size: 22px; font-weight: 700; color: #15171A; margin: 0 0 8px 0; }
+.modal-body p { font-size: 14px; color: #6B7077; line-height: 1.5; margin: 0 0 24px 0; }
+.receipt-box { background: #F7F8FA; border-radius: 14px; padding: 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 24px; text-align: left; }
+.receipt-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .receipt-icon.blue-bg { background: #F9F7FF; }
-
-.receipt-info h4 {
-  font-size: 15px;
-  font-weight: 700;
-  color: #15171A;
-  margin: 0 0 2px 0;
-}
-
-.receipt-info span {
-  font-size: 13px;
-  color: #6B7077;
-}
-
-.btn-primary-modal {
-  width: 100%;
-  border: none;
-  border-radius: 27px;
-  height: 54px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary-modal.blue-btn {
-  background: #0085FF;
-  color: #FFFFFF;
-}
-
-.btn-primary-modal.blue-btn:active {
-  transform: scale(0.96);
-  background: #0070D6;
-}
-
-.modal-fade-enter-active, .modal-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-.modal-fade-enter-from, .modal-fade-leave-to {
-  opacity: 0;
-}
+.receipt-info h4 { font-size: 15px; font-weight: 700; color: #15171A; margin: 0 0 2px 0; }
+.receipt-info span { font-size: 13px; color: #6B7077; }
+.btn-primary-modal { width: 100%; border: none; border-radius: 27px; height: 54px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+.btn-primary-modal.blue-btn { background: #7A3FF2; color: #FFFFFF; }
+.btn-primary-modal.blue-btn:active { transform: scale(0.96); background: #622CC2; }
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.3s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 </style>

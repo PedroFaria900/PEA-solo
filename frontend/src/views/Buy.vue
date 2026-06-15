@@ -204,16 +204,32 @@
         </div>
       </div>
 
-    </div><div class="bottom-action">
-      <button class="btn-confirmar" @click="confirmarCompra" :disabled="isProcessing">
-        {{ isProcessing ? 'A processar...' : `Confirmar e Pagar ${formattedPrice}€` }}
+    </div>
+
+    <div class="bottom-action">
+      <button class="btn-confirmar" @click="showConfirmModal = true" :disabled="isProcessing">
+        Pagar {{ formattedPrice }}€
       </button>
     </div>
 
+    <ConfirmModal 
+      :show="showConfirmModal"
+      summaryTitle="Bilhete Simples"
+      :summaryPrice="formattedPrice + '€'"
+      :isProcessing="isProcessing"
+      @confirm="confirmarCompra"
+      @cancel="showConfirmModal = false"
+    />
+
+    <InsufficientBalanceModal 
+      :show="paymentStatus === 'error'"
+      @close="fecharModal"
+      @charge="irParaCarregarCarteira"
+    />
+
     <transition name="modal-fade">
-      <div v-if="paymentStatus" class="modal-overlay">
-        
-        <div v-if="paymentStatus === 'success'" class="modal-card">
+      <div v-if="paymentStatus === 'success'" class="modal-overlay">
+        <div class="modal-card">
           <div class="modal-top success-bg">
             <div class="icon-overlap">
               <div class="circle-icon green-circle">
@@ -244,27 +260,6 @@
             <button class="btn-primary-modal" @click="irParaBilhetes">Ver os meus bilhetes</button>
           </div>
         </div>
-
-        <div v-if="paymentStatus === 'error'" class="modal-card">
-          <div class="modal-top error-bg">
-            <div class="icon-overlap">
-              <div class="circle-icon red-circle">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </div>
-            </div>
-          </div>
-          
-          <div class="modal-body">
-            <h2>Pagamento Recusado</h2>
-            <p>Não foi possível processar a transação. Verifica o teu saldo ou tenta outro método de pagamento.</p>
-            
-            <button class="btn-primary-modal" @click="fecharModal">Tentar novamente</button>
-          </div>
-        </div>
-
       </div>
     </transition>
 
@@ -275,6 +270,8 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
+import ConfirmModal from '../components/ConfirmModal.vue'
+import InsufficientBalanceModal from '../components/InsufficientBalanceModal.vue' // 1. IMPORTAR
 
 const route    = useRoute()
 const router   = useRouter()
@@ -303,28 +300,27 @@ const userBalance = computed(() => authStore.userSaldo)
 const selectedMethod = ref('wallet')
 const isProcessing   = ref(false)
 const paymentStatus  = ref(null) // null | 'success' | 'error'
+const showConfirmModal = ref(false)
 
 // ── Confirmar compra ──
 const confirmarCompra = () => {
   isProcessing.value = true
 
-  // Simulamos o tempo de processamento de um pagamento
   setTimeout(() => {
     isProcessing.value = false
+    showConfirmModal.value = false // Fecha o modal de confirmação
     
-    // Regra de Negócio de Erro: Se usar a carteira e o saldo for insuficiente
     if (selectedMethod.value === 'wallet' && userBalance.value < price.value) {
       paymentStatus.value = 'error'
       return
     }
 
-    // Regra de Negócio de Sucesso: Desconta o saldo (se for wallet) e mostra sucesso
     if (selectedMethod.value === 'wallet' && authStore.user) {
       authStore.user.saldo -= price.value
     }
     
     paymentStatus.value = 'success'
-  }, 1200) // 1.2 segundos de "loading"
+  }, 1200)
 }
 
 // ── Ações dos Modais ──
@@ -335,6 +331,12 @@ const fecharModal = () => {
 const irParaBilhetes = () => {
   paymentStatus.value = null
   router.push('/trips')
+}
+
+// 2. FUNÇÃO PARA CARREGAR A CARTEIRA
+const irParaCarregarCarteira = () => {
+  paymentStatus.value = null
+  router.push('/ChargeWallet')
 }
 </script>
 
@@ -553,7 +555,7 @@ const irParaBilhetes = () => {
   white-space: nowrap;
 }
 
-/* ── Route Summary (Passo 1 preenchido) ── */
+/* ── Route Summary ── */
 .route-summary {
   display: flex;
   align-items: center;
@@ -833,7 +835,7 @@ const irParaBilhetes = () => {
 }
 
 /* =========================================
-   MODAIS DE PAGAMENTO
+   MODAIS DE SUCESSO (Originais simplificados)
    ========================================= */
 .modal-overlay {
   position: fixed;
@@ -871,8 +873,8 @@ const irParaBilhetes = () => {
   display: flex;
   justify-content: center;
 }
+
 .success-bg { background: #E7F6EC; }
-.error-bg { background: #FBEAE8; }
 
 .icon-overlap {
   position: absolute;
@@ -895,7 +897,6 @@ const irParaBilhetes = () => {
   justify-content: center;
 }
 .green-circle { background: #1F9D4D; }
-.red-circle { background: #D63A2E; }
 
 .modal-body {
   padding: 60px 24px 24px 24px;
