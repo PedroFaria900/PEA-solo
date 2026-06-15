@@ -156,7 +156,7 @@
     </div>
 
     <div class="bottom-action">
-      <button class="btn-confirmar blue-btn" @click="showConfirmModal = true" :disabled="isProcessing || !selectedZone">
+      <button class="btn-confirmar blue-btn" @click="handlePagarClick" :disabled="isProcessing || !selectedZone">
         {{ isProcessing ? 'A processar...' : `Pagar ${formattedFinalPrice}€` }}
       </button>
     </div>
@@ -175,6 +175,50 @@
       @close="fecharModal"
       @charge="irParaCarregarCarteira"
     />
+
+    <!-- Pass Warning Modal -->
+    <transition name="modal-fade">
+      <div v-if="showPassWarningModal" class="modal-overlay">
+        <div class="modal-card">
+          <div class="modal-top warning-bg" style="background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%); padding-top: 44px; padding-bottom: 24px; text-align: center;">
+            <div class="icon-overlap" style="top: -28px;">
+              <div class="circle-icon" style="background: #F5A623; box-shadow: 0px 8px 24px rgba(245, 166, 35, 0.3);">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+            </div>
+            <h2 style="color: #15171A; font-size: 20px; font-weight: 700; margin: 0 0 8px 0; letter-spacing: -0.5px;">Passe equivalente a este pack</h2>
+            <p style="color: #6B7077; font-size: 14px; line-height: 1.5; margin: 0; padding: 0 20px;">
+              Já tens um passe ativo para {{ activePass?.areaGeografica || 'esta zona' }}.<br>Queres mesmo continuar com a compra?
+            </p>
+          </div>
+          
+          <div class="modal-body" style="padding-top: 24px;">
+            <div class="receipt-box" style="margin-top: 0; margin-bottom: 24px; border: 1px solid #FFE0B2;">
+              <div class="receipt-icon" style="background: #FFF3E0;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+              </div>
+              <div class="receipt-info">
+                <h4 style="color: #15171A;">Passe ativo · {{ activePass?.areaGeografica || 'Rede Geral' }}</h4>
+                <span v-if="activePass?.expiraEm" style="color: #6B7077;">Válido até {{ new Date(activePass.expiraEm).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' }) }}</span>
+                <span v-else style="color: #6B7077;">Aguarda ativação</span>
+              </div>
+            </div>
+
+            <button class="btn-primary-modal" style="background: #F5A623; border-color: #F5A623;" @click="showPassWarningModal = false; showConfirmModal = true">Continuar mesmo assim</button>
+            <button style="width: 100%; margin-top: 12px; padding: 14px; background: none; border: none; font-weight: 600; font-size: 15px; color: #6B7077; cursor: pointer; border-radius: 12px; transition: background 0.2s;" @mouseover="e => e.target.style.background='#F2F4F7'" @mouseout="e => e.target.style.background='transparent'" @click="showPassWarningModal = false">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <transition name="modal-fade">
       <div v-if="paymentStatus === 'success'" class="modal-overlay">
@@ -232,6 +276,17 @@ const selectedMethod = ref('wallet')
 const isProcessing = ref(false)
 const paymentStatus = ref(null)
 const showConfirmModal = ref(false)
+const showPassWarningModal = ref(false)
+const activePass = ref(null)
+
+const handlePagarClick = () => {
+  // Simplificamos a assumir que se houver qualquer passe, damos aviso
+  if (activePass.value) {
+    showPassWarningModal.value = true
+  } else {
+    showConfirmModal.value = true
+  }
+}
 
 // Estatuto real do utilizador
 const userStatus = computed(() => authStore.user?.perfil || 'NORMAL')
@@ -252,6 +307,15 @@ onMounted(async () => {
     catalogoPack.value = res.data.pack || []
   } catch (err) {
     console.error('Erro ao carregar catalogo', err)
+  }
+
+  // Verificar se já tem passe
+  try {
+    const resT = await axios.get('/api/titulos')
+    const passes = resT.data.filter(t => t.tipo === 'PASSE' && (t.estado === 'ATIVO' || t.estado === 'PENDENTE'))
+    if (passes.length > 0) activePass.value = passes[0]
+  } catch (err) {
+    // ignore
   }
 })
 
@@ -318,7 +382,12 @@ const irParaBilhetes = () => {
 
 const irParaCarregarCarteira = () => {
   paymentStatus.value = null
-  router.push('/ChargeWallet')
+  const missingAmount = Math.max(0, finalPrice.value - userBalance.value)
+  if (missingAmount > 0) {
+    router.push(`/wallet/charge?amount=${missingAmount.toFixed(2)}`)
+  } else {
+    router.push('/wallet/charge')
+  }
 }
 </script>
 

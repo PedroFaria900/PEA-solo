@@ -143,16 +143,26 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../store/auth'
 import axios from 'axios'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 // ── Estado ──
 const amount = ref(10) // Valor padrão
+
+onMounted(() => {
+  if (route.query.amount) {
+    const val = Number(route.query.amount)
+    if (!isNaN(val) && val > 0) {
+      amount.value = Number(val.toFixed(2))
+    }
+  }
+})
 const selectedMethod = ref('mbway')
 const isProcessing = ref(false)
 const paymentStatus = ref(null)

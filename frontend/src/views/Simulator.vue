@@ -139,11 +139,12 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import jsQR from 'jsqr'
 
 const router = useRouter()
+const route = useRoute()
 
 // State machine: 'scanning' | 'processing' | 'success' | 'fail'
 const state = ref('scanning')
@@ -244,7 +245,7 @@ const handleQRCode = async (data) => {
   try {
     const res = await axios.post('/api/validacoes', {
       tituloId: selectedTicketId.value,
-      leitorId: leitorId
+      leitorCodigo: leitorId
     })
     result.value = res.data
     now.value = new Date()
@@ -292,8 +293,11 @@ const fetchTickets = async () => {
   }
 }
 
-onMounted(() => {
-  fetchTickets()
+onMounted(async () => {
+  await fetchTickets()
+  if (route.query.ticketId) {
+    selectedTicketId.value = route.query.ticketId
+  }
   startCamera()
 })
 

@@ -398,7 +398,12 @@ const irParaBilhetes = () => {
 
 const irParaCarregarCarteira = () => {
   paymentStatus.value = null
-  router.push('/ChargeWallet')
+  const missingAmount = Math.max(0, finalPrice.value - userBalance.value)
+  if (missingAmount > 0) {
+    router.push(`/wallet/charge?amount=${missingAmount.toFixed(2)}`)
+  } else {
+    router.push('/wallet/charge')
+  }
 }
 </script>
 

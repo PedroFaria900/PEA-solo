@@ -95,7 +95,7 @@
                 <span class="qr-title">Mostrar ao Validador</span>
                 <span class="qr-subtitle">Clica para abrir o código QR</span>
               </div>
-              <button class="qr-btn" @click="router.push('/simulator')">
+              <button class="qr-btn" @click="router.push(`/simulator?ticketId=${ticket.id}`)">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
               </button>
             </div>
