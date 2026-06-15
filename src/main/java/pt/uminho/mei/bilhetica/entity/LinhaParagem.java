@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "linha_paragem")
+@Table(name = "linha_paragem", indexes = {
+    @Index(name = "idx_linha_paragem_seq", columnList = "linha_id, sentido, sequencia"),
+    @Index(name = "idx_lp_paragem",        columnList = "paragem_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,8 +29,6 @@ public class LinhaParagem {
 
     @Column(nullable = false)
     private Integer sequencia;
-
-    private Integer distanciaMetros;
 
     private Integer tempoEstimadoSeg;
 }

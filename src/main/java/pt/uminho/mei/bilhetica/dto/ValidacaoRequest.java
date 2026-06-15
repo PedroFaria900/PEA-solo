@@ -8,5 +8,6 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ValidacaoRequest {
     private UUID tituloId;
-    private UUID leitorId;
+    /** Código do leitor lido a partir do QR afixado no veículo (ex.: SER_52f1-BUS01). */
+    private String leitorCodigo;
 }

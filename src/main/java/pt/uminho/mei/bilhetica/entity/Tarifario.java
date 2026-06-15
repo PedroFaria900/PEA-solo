@@ -3,6 +3,8 @@ package pt.uminho.mei.bilhetica.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import pt.uminho.mei.bilhetica.enums.PerfilUtente;
+import pt.uminho.mei.bilhetica.enums.PeriodoPasse;
+import pt.uminho.mei.bilhetica.enums.TipoTitulo;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -18,8 +20,9 @@ public class Tarifario {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "tipo_titulo", nullable = false)
-    private String tipoTitulo;
+    private TipoTitulo tipoTitulo;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "perfil_utente", nullable = false)
@@ -28,6 +31,11 @@ public class Tarifario {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "zona_id")
     private ZonaTarifaria zona;
+
+    /** Período do passe (MENSAL/ANUAL). NULL para PACK e BILHETE. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "periodo")
+    private PeriodoPasse periodo;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal preco;

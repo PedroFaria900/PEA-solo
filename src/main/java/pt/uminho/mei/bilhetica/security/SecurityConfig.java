@@ -38,11 +38,15 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/catalogo/**").permitAll()
                 .requestMatchers("/api/linhas/**").permitAll()
                 .requestMatchers("/api/paragens/**").permitAll()
+                .requestMatchers("/api/rotas/pesquisar").authenticated()
                 .requestMatchers("/api/rotas/**").permitAll()
+                .requestMatchers("/api/leitores/**").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
             .addFilterBefore(jwtFilter,
                 UsernamePasswordAuthenticationFilter.class);

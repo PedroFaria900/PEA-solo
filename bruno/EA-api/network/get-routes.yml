@@ -5,7 +5,17 @@ info:
 
 http:
   method: GET
-  url: "{{baseUrl}}/api/rotas"
+  url: "{{baseUrl}}/api/rotas?origemId={{origemId}}&destinoId={{destinoId}}"
+  # Pesquisa directa (sem transbordos). Requer origemId e destinoId (UUIDs de paragem).
+  # Descobrir IDs: GET /api/linhas → GET /api/linhas/{id}/paragens → copiar paragemId.
+  # Para pesquisa com transbordos e recomendação de títulos use search-routes.
+
+  params:
+    query:
+      - name: origemId
+        value: "{{origemId}}"
+      - name: destinoId
+        value: "{{destinoId}}"
 
   auth: inherit
 

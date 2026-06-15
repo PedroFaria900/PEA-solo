@@ -10,7 +10,8 @@ http:
     type: json
     data: |-
       {
-        "valor": 10.50
+        "valor": 10.50,
+        "metodoId": null
       }
 
   auth: inherit

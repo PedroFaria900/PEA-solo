@@ -1,0 +1,24 @@
+info:
+  name: update-method
+  type: http
+  seq: 7
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/carteira/metodos/{{metodoId}}"
+  body:
+    type: json
+    data: |-
+      {
+        "ultimos4": "5678",
+        "validade": "06/29",
+        "titular": "João Silva",
+        "marca": "Mastercard"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

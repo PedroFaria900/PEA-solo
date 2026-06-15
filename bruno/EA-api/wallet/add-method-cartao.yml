@@ -1,0 +1,25 @@
+info:
+  name: add-method-cartao
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/carteira/metodos"
+  body:
+    type: json
+    data: |-
+      {
+        "tipo": "CARTAO",
+        "ultimos4": "1234",
+        "validade": "12/27",
+        "titular": "João Silva",
+        "marca": "Visa"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

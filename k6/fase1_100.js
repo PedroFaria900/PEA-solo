@@ -65,11 +65,11 @@ export default function (data) {
     'Authorization': `Bearer ${token}`,
   };
 
-  const redeRes = http.get(`${BASE_URL}/api/rede/estatisticas`, {
+  const redeRes = http.get(`${BASE_URL}/api/linhas`, {
     headers,
-    tags: { endpoint: 'rede' }
-});
-  check(redeRes, { 'rede 200': (r) => r.status === 200 });
+    tags: { endpoint: 'linhas_all' }
+  });
+  check(redeRes, { 'linhas 200': (r) => r.status === 200 });
 
   //sleep(0.5);
 

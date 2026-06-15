@@ -1,0 +1,25 @@
+info:
+  name: get-leitor
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/leitores/:codigo"
+  params:
+    - name: codigo
+      value: SER_52f1-BUS01
+      type: path
+
+  auth: inherit
+
+docs: |-
+  Resolve o código lido no QR afixado no veículo para os dados do leitor
+  (linha e estado), antes de submeter a validação em /api/validacoes.
+  Endpoint público. Use /api/leitores/:codigo/qr para obter a imagem PNG do QR.
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,26 @@
+info:
+  name: add-pack-tier
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/admin/pack-tiers"
+  # Acrescenta um novo tier de pack.
+  # Requer autenticação de administrador (ROLE_ADMIN).
+  # Corpo: { "viagens": N } onde N é um inteiro positivo não duplicado.
+
+  auth: inherit
+
+  body:
+    mode: json
+    json: |
+      {
+        "viagens": 15
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

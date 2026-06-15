@@ -1,0 +1,19 @@
+info:
+  name: delete-pack-tier
+  type: http
+  seq: 3
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/admin/pack-tiers/15"
+  # Remove um tier de pack pelo número de viagens.
+  # Requer autenticação de administrador (ROLE_ADMIN).
+  # Substituir 15 pelo número de viagens a remover.
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

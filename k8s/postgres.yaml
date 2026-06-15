@@ -26,6 +26,12 @@ spec:
       containers:
         - name: postgres
           image: postgis/postgis:16-3.4
+          args:
+            - postgres
+            - -c
+            - max_connections=200
+            - -c
+            - shared_buffers=512MB
           env:
             - name: POSTGRES_DB
               value: bilhetica
@@ -35,6 +41,13 @@ spec:
               value: bilhetica123
           ports:
             - containerPort: 5432
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data

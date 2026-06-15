@@ -1,0 +1,22 @@
+info:
+  name: update-profile
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/utentes/perfil"
+  body:
+    type: json
+    data: |-
+      {
+        "nome": "João Silva",
+        "telemovel": "912345678"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
