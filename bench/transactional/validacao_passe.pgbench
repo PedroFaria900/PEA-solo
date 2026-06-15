@@ -1,0 +1,40 @@
+-- validacao_passe.pgbench
+-- Baseline transactional benchmark: replicates the PASSE validation hot path.
+--
+-- Maps to ValidacaoService.processar() with a PASSE title:
+--   1. SELECT titulo + leitor (via pool tables)
+--   2. INSERT validacao
+--   3. INSERT viagem (referencing the validacao id via CTE)
+--
+-- Uses a CTE to avoid pgbench's quoted-string variable (:'var') substitution,
+-- which is unreliable with UUID values across pgbench versions.
+-- UUID pool tables (bench_passe_ids, bench_leitor_ids) are joined inline.
+--
+-- Zone check omitted: seeded PASSEs are "Rede completa" → RegraZona is a no-op.
+-- No UPDATE on titulo_transporte for PASSE → correct sustained-throughput baseline.
+--
+-- Required pgbench -D variables:
+--   -D npasse=N    (total rows in bench_passe_ids)
+--   -D nleitor=M   (total rows in bench_leitor_ids)
+
+\set p random(1, :npasse)
+\set l random(1, :nleitor)
+
+BEGIN;
+
+-- 2 INSERTs in one CTE; pool IDs resolved via subquery, not pgbench variables.
+-- This mirrors: INSERT validacao + INSERT viagem (with the validacao FK).
+WITH ins_validacao AS (
+    INSERT INTO validacao (id, titulo_id, leitor_id, momento, resultado)
+    SELECT gen_random_uuid(), p.id, l.id, now(), 'VALIDO'
+    FROM bench_passe_ids p
+    CROSS JOIN bench_leitor_ids l
+    WHERE p.seq = :p
+      AND l.seq = :l
+    RETURNING id
+)
+INSERT INTO viagem (id, validacao_id, momento)
+SELECT gen_random_uuid(), ins_validacao.id, now()
+FROM ins_validacao;
+
+COMMIT;

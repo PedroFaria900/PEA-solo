@@ -1,0 +1,51 @@
+-- validacao_zona.pgbench
+-- Like validacao_passe but adds the isLinhaInZona 3-table JOIN before inserting.
+--
+-- Purpose: quantify the DB cost saved by the 'zona-linha' Redis cache (CacheConfig,
+-- ZonaTarifariaService.isLinhaInZona @Cacheable, 6h TTL).
+--
+-- The JOIN is from ZonaTarifariaRepository.isLinhaInZona() (translated JPQL → SQL):
+--   zona_tarifaria_paragem → linha_paragem  WHERE zona_id=? AND linha_id=?
+-- Here we look up the linha_id for our random leitor inline, then run the JOIN.
+-- The zone check result is not used (we always INSERT VALIDO) — we just pay the DB cost.
+--
+-- bench_zona_linha is pre-populated with (zona_id, linha_id) pairs that DO cover
+-- each other (query returns TRUE) — the non-trivial execution path for the JOIN.
+--
+-- Required pgbench -D variables:
+--   -D npasse=N    (total rows in bench_passe_ids)
+--   -D nleitor=M   (total rows in bench_leitor_ids)
+--   -D nzona=K     (total rows in bench_zona_linha)
+
+\set p random(1, :npasse)
+\set l random(1, :nleitor)
+\set z random(1, :nzona)
+
+BEGIN;
+
+-- isLinhaInZona check (the exact 3-table JOIN from ZonaTarifariaRepository.isLinhaInZona):
+-- zona_tarifaria_paragem JOIN linha_paragem WHERE zona_id=? AND linha_id=?
+-- bench_zona_linha[z] provides a valid (zona_id, linha_id) pair; the JOIN returns > 0 rows.
+-- Result is discarded — we are measuring DB cost, not validation logic.
+SELECT (COUNT(*) > 0)::int AS zona_ok
+FROM bench_zona_linha bz
+JOIN zona_tarifaria_paragem ztp ON ztp.zona_id   = bz.zona_id
+JOIN linha_paragem           lp  ON lp.paragem_id = ztp.paragem_id
+WHERE bz.seq         = :z
+  AND lp.linha_id    = (SELECT linha_id FROM bench_leitor_ids WHERE seq = :l);
+
+-- INSERT validacao + viagem (same CTE as validacao_passe.pgbench)
+WITH ins_validacao AS (
+    INSERT INTO validacao (id, titulo_id, leitor_id, momento, resultado)
+    SELECT gen_random_uuid(), p.id, l.id, now(), 'VALIDO'
+    FROM bench_passe_ids p
+    CROSS JOIN bench_leitor_ids l
+    WHERE p.seq = :p
+      AND l.seq = :l
+    RETURNING id
+)
+INSERT INTO viagem (id, validacao_id, momento)
+SELECT gen_random_uuid(), ins_validacao.id, now()
+FROM ins_validacao;
+
+COMMIT;

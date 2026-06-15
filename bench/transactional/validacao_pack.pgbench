@@ -1,0 +1,57 @@
+-- validacao_pack.pgbench
+-- Adds the UPDATE with optimistic @Version lock to measure write+lock overhead.
+--
+-- Maps to ValidacaoService.processar() with a PACK title:
+--   1. SELECT current version  (integer — safe to use with pgbench :varname)
+--   2. UPDATE titulo_transporte WHERE version = :version  (optimistic lock)
+--   3. INSERT validacao + viagem (CTE)
+--
+-- The UPDATE uses a subquery to resolve the title UUID so we avoid :'varname'
+-- for UUID values. Version is INTEGER → :version (no quoting) works fine.
+--
+-- Use a LARGE pool (npack >> concurrent clients) to keep conflict rate low.
+-- For deliberate high-conflict testing see pack_contention.pgbench.
+--
+-- Required pgbench -D variables:
+--   -D npack=N     (total rows in bench_pack_ids; use the full pool)
+--   -D nleitor=M   (total rows in bench_leitor_ids)
+--
+-- IMPORTANT: viagens_restantes decrements permanently.
+-- Run make restore-local before and after this test to restore state.
+
+\set p random(1, :npack)
+\set l random(1, :nleitor)
+
+BEGIN;
+
+-- Read current version (integer: safe to capture via \gset → :version)
+SELECT version
+FROM titulo_transporte
+WHERE id = (SELECT id FROM bench_pack_ids WHERE seq = :p)
+\gset
+
+-- Optimistic lock UPDATE: title UUID looked up via subquery (no :'varname' needed).
+-- WHERE version = :version is the @Version optimistic lock check.
+-- RETURNING ensures 0-row failure is visible (but pgbench doesn't abort on 0 rows
+-- from UPDATE — we measure contention separately via pack_contention.pgbench).
+UPDATE titulo_transporte
+SET viagens_restantes = GREATEST(COALESCE(viagens_restantes, 0) - 1, 0),
+    version           = version + 1
+WHERE id      = (SELECT id FROM bench_pack_ids WHERE seq = :p)
+  AND version = :version;
+
+-- INSERT validacao + viagem (pool IDs via subquery, not pgbench string vars)
+WITH ins_validacao AS (
+    INSERT INTO validacao (id, titulo_id, leitor_id, momento, resultado)
+    SELECT gen_random_uuid(), p.id, l.id, now(), 'VALIDO'
+    FROM bench_pack_ids p
+    CROSS JOIN bench_leitor_ids l
+    WHERE p.seq = :p
+      AND l.seq = :l
+    RETURNING id
+)
+INSERT INTO viagem (id, validacao_id, momento)
+SELECT gen_random_uuid(), ins_validacao.id, now()
+FROM ins_validacao;
+
+COMMIT;

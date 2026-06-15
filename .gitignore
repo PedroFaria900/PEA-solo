@@ -42,3 +42,11 @@ k6_results/
 
 # Python virtual environment
 .venv/
+
+# Benchmark raw output (pgbench logs, EXPLAIN dumps, timing CSVs)
+# bench/results/SUMMARY.md IS kept in git (the filled-in report template).
+bench/results/explain/
+bench/results/tmp/
+bench/results/*.csv
+bench/results/tx_*.txt
+bench/results/insert_cost_*.txt

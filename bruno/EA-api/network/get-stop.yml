@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/api/paragens/:stopID"
   params:
     - name: stopID
-      value: 5bf13b57-db42-43fe-849d-5b5a94f4b34a
+      value: c12a01fd-e731-4e99-afa1-8733f59b69d0
       type: path
   auth: inherit
 

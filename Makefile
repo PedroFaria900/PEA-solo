@@ -36,6 +36,7 @@ MINIKUBE_CPUS := 8
         snapshot-local restore-local snapshot-k8s restore-k8s \
         test-user admin-user \
         k6-fase1 k6-fase2 k6-fase3 k6-validacao k6-all \
+        bench-setup bench-tx bench-tx-passe bench-analytical bench-optimize bench-insert-cost bench-partition-setup bench-before-after \
         clean clean-local clean-k8s
 
 # ── Default ──────────────────────────────────────────────────
@@ -289,6 +290,55 @@ validacao-capacity-%:
 
 validacao-capacity-sweep: validacao-capacity-500 validacao-capacity-1000 validacao-capacity-1500 validacao-capacity-2000
 	@echo "✅ All validation capacity tests completed"
+
+# ══════════════════════════════════════════════════════════════
+# BENCHMARKING (ABD)
+# ══════════════════════════════════════════════════════════════
+# Direct DB benchmarks (no Spring/Hibernate). Requires dev-infra + seed-local.
+# Results land in bench/results/ (gitignored).
+# Full workflow: bench-setup → bench-tx → bench-analytical → bench-optimize
+
+bench-setup: ## Create pgbench pool tables + VACUUM ANALYZE (run once after seed-local)
+	@echo "🔧 Setting up bench pool tables..."
+	$(DOCKER_PG) psql -h localhost -p $(LOCAL_DB_PORT) -U $(DB_USER) -d $(DB_NAME) \
+		-f bench/lib/setup_pools.sql
+	@echo "✅ Bench setup complete"
+
+bench-tx: ## Transactional pgbench sweep (PASSE/ZONE/PACK/contention, -c 1/10/50/100)
+	@echo "⚡ Transactional pgbench benchmarks..."
+	chmod +x bench/transactional/run.sh
+	./bench/transactional/run.sh
+
+bench-tx-passe: ## PASSE-only transactional benchmark (safe to repeat, no state mutation)
+	@echo "⚡ PASSE transactional benchmark..."
+	chmod +x bench/transactional/run.sh
+	./bench/transactional/run.sh passe
+
+bench-analytical: ## EXPLAIN (ANALYZE, BUFFERS) + warm-median timing for queries A1–A8
+	@echo "📊 Analytical baseline benchmarks..."
+	chmod +x bench/analytical/run.sh
+	./bench/analytical/run.sh
+
+bench-optimize: ## Apply optimizations (indexes/BRIN/partitioning) and compare vs baseline
+	@echo "🚀 Optimization comparison benchmarks..."
+	chmod +x bench/optimizations/compare.sh
+	./bench/optimizations/compare.sh
+
+bench-insert-cost: ## Measure INSERT TPS under varying index sets (analytical index tax)
+	@echo "📏 Insert cost experiment..."
+	chmod +x bench/optimizations/insert_cost.sh
+	./bench/optimizations/insert_cost.sh
+
+bench-before-after: ## Before vs. now comparison: @Index analytics speedup + Redis cache benefit (main ABD result)
+	@echo "📊 Before vs. now ABD benchmark..."
+	chmod +x bench/before_after.sh
+	./bench/before_after.sh
+
+bench-partition-setup: ## Create validacao_part (monthly RANGE partition copy, needed for bench-optimize)
+	@echo "🗂️  Setting up partitioned table..."
+	$(DOCKER_PG) psql -h localhost -p $(LOCAL_DB_PORT) -U $(DB_USER) -d $(DB_NAME) \
+		-f bench/optimizations/partitioning.sql
+	@echo "✅ validacao_part created"
 
 # ══════════════════════════════════════════════════════════════
 # CLEANUP

@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/api/linhas/:lineID/paragens"
   params:
     - name: lineID
-      value: 411acb6f-4e94-412c-9d5d-449519afa646
+      value: 6ca879ee-9f73-4bdb-9a58-092e809b7d18
       type: path
   auth: inherit
 
