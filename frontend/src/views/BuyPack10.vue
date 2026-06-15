@@ -28,7 +28,7 @@
             <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
-          Zona {{ selectedZone.replace('Z', '') }}
+          {{ selectedZone }}
         </span>
         <span class="hero-meta-sep">·</span>
         <span class="hero-meta-item">
@@ -53,22 +53,9 @@
         </div>
 
         <div class="zone-grid">
-          <div class="zone-card" :class="{ active: selectedZone === 'Z1' }" @click="selectedZone = 'Z1'">
-            <div class="z-badge" :class="{ active: selectedZone === 'Z1' }">Z1</div>
-            <div class="z-title">1 Zona</div>
-            <div class="z-price">9,00 €</div>
-          </div>
-
-          <div class="zone-card" :class="{ active: selectedZone === 'Z2' }" @click="selectedZone = 'Z2'">
-            <div class="z-badge" :class="{ active: selectedZone === 'Z2' }">Z2</div>
-            <div class="z-title">Até 2 Zonas</div>
-            <div class="z-price">13,50 €</div>
-          </div>
-          
-          <div class="zone-card" :class="{ active: selectedZone === 'Z3' }" @click="selectedZone = 'Z3'">
-            <div class="z-badge" :class="{ active: selectedZone === 'Z3' }">Z3</div>
-            <div class="z-title">Até 3 Zonas</div>
-            <div class="z-price">18,00 €</div>
+          <div class="zone-card" v-for="zona in zonasDisponiveis" :key="zona" :class="{ active: selectedZone === zona }" @click="selectedZone = zona">
+            <div class="z-badge" :class="{ active: selectedZone === zona }">{{ zona.slice(-1) }}</div>
+            <div class="z-title">{{ zona }}</div>
           </div>
         </div>
       </div>
@@ -229,9 +216,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
+import axios from 'axios'
 import ConfirmModal from '../components/ConfirmModal.vue'
 import InsufficientBalanceModal from '../components/InsufficientBalanceModal.vue'
 
@@ -239,22 +227,45 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 // ── Estado ──
-const selectedZone = ref('Z1')
+const selectedZone = ref('Zona A')
 const selectedMethod = ref('wallet')
 const isProcessing = ref(false)
 const paymentStatus = ref(null)
 const showConfirmModal = ref(false)
 
-// Lógica de cálculo de preços (10 bilhetes com 10% desconto)
-const prices = {
-  'Z1': { base: 10.00, discount: 1.00, total: 9.00 },
-  'Z2': { base: 15.00, discount: 1.50, total: 13.50 },
-  'Z3': { base: 20.00, discount: 2.00, total: 18.00 }
-}
+// Estatuto real do utilizador
+const userStatus = computed(() => authStore.user?.perfil || 'NORMAL')
 
-const basePrice = computed(() => prices[selectedZone.value].base)
-const discountValue = computed(() => prices[selectedZone.value].discount)
-const finalPrice = computed(() => prices[selectedZone.value].total)
+const catalogoPack = ref([])
+
+const zonasDisponiveis = computed(() => {
+  const z = new Set()
+  catalogoPack.value.forEach(t => {
+    if (t.zona && t.zona !== 'Rede completa') z.add(t.zona)
+  })
+  return Array.from(z).sort()
+})
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/catalogo/titulos')
+    catalogoPack.value = res.data.pack || []
+  } catch (err) {
+    console.error('Erro ao carregar catalogo', err)
+  }
+})
+
+const basePrice = computed(() => {
+  const t = catalogoPack.value.find(x => x.perfil === 'NORMAL' && x.zona === selectedZone.value)
+  return t ? t.preco * 10 : 0
+})
+
+const finalPrice = computed(() => {
+  const t = catalogoPack.value.find(x => x.perfil === userStatus.value && x.zona === selectedZone.value)
+  return t ? t.preco * 10 : 0
+})
+
+const discountValue = computed(() => Math.max(0, basePrice.value - finalPrice.value))
 
 const formattedBasePrice = computed(() => basePrice.value.toFixed(2).replace('.', ','))
 const formattedDiscountValue = computed(() => discountValue.value.toFixed(2).replace('.', ','))
@@ -264,24 +275,35 @@ const formattedFinalPrice = computed(() => finalPrice.value.toFixed(2).replace('
 const userBalance = computed(() => authStore.userSaldo || 0)
 
 // ── Lógica de Confirmação ──
-const confirmarCompra = () => {
+const confirmarCompra = async () => {
+  if (selectedMethod.value === 'wallet' && userBalance.value < finalPrice.value) {
+    paymentStatus.value = 'error'
+    showConfirmModal.value = false
+    return
+  }
+
   isProcessing.value = true
 
-  setTimeout(() => {
-    isProcessing.value = false
-    showConfirmModal.value = false
-    
-    if (selectedMethod.value === 'wallet' && userBalance.value < finalPrice.value) {
-      paymentStatus.value = 'error'
-      return
-    }
+  try {
+    const t = catalogoPack.value.find(x => x.zona === selectedZone.value)
+    const ids = t && t.zona_id ? [t.zona_id] : []
 
-    if (selectedMethod.value === 'wallet' && authStore.user) {
-      authStore.user.saldo -= finalPrice.value
-    }
+    await axios.post('/api/titulos', {
+      tipo: 'PACK',
+      viagens: 10,
+      zonasIds: ids
+    })
+    
+    await authStore.fetchProfile()
     
     paymentStatus.value = 'success'
-  }, 1200)
+  } catch (err) {
+    console.error('Erro na compra', err)
+    paymentStatus.value = 'error' 
+  } finally {
+    isProcessing.value = false
+    showConfirmModal.value = false
+  }
 }
 
 // ── Ações dos Modais ──

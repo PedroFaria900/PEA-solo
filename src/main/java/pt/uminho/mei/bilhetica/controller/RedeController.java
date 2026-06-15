@@ -38,6 +38,11 @@ public class RedeController {
         return ResponseEntity.ok(redeService.paragensLinha(id, sentido));
     }
 
+    @GetMapping("/paragens")
+    public ResponseEntity<List<ParagemResponse>> listarParagens() {
+        return ResponseEntity.ok(redeService.listarParagens());
+    }
+
     @GetMapping("/paragens/{id}")
     public ResponseEntity<ParagemResponse> detalheParagem(
             @PathVariable UUID id) {

@@ -22,7 +22,7 @@
     </section>
 
     <section class="stats-grid">
-      <div class="stat-card">
+      <div class="stat-card clickable-card" @click="router.push('/wallet')">
         <div class="stat-icon-wrapper blue-bg">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
         </div>
@@ -75,8 +75,6 @@
       Terminar sessão
     </button>
 
-    <!-- SEM bottom-navbar aqui — o App.vue já renderiza o Navbar.vue globalmente -->
-
   </div>
 </template>
 
@@ -96,7 +94,7 @@ const userInitials = computed(() => {
   if (names.length >= 2) return (names[0][0] + names[names.length - 1][0]).toUpperCase()
   return names[0][0].toUpperCase()
 })
-const saldo = computed(() => authStore.userSaldo)
+const saldo = computed(() => authStore.userSaldo || 0)
 
 // ── Estado API ──
 const hasActivePass = ref(false)
@@ -286,6 +284,18 @@ const handleLogout = () => {
   box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.04), 0px 6px 18px rgba(16, 24, 40, 0.07);
   border-radius: 20px;
   padding: 16px;
+}
+
+/* Adicionado para o card clicável */
+.clickable-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clickable-card:active {
+  transform: scale(0.96);
+  border-color: #0085FF;
+  background-color: #F9FBFF;
 }
 
 .stat-icon-wrapper {

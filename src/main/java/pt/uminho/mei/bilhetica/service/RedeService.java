@@ -39,6 +39,17 @@ public class RedeService {
             .collect(Collectors.toList());
     }
 
+    public List<ParagemResponse> listarParagens() {
+        return paragemRepository.findAll().stream()
+            .map(p -> ParagemResponse.builder()
+                .id(p.getId())
+                .nome(p.getNome())
+                .codigo(p.getCodigo())
+                .municipio(p.getMunicipio())
+                .build())
+            .collect(Collectors.toList());
+    }
+
     public ParagemResponse detalheParagem(UUID id) {
         Paragem p = paragemRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Paragem não encontrada"));

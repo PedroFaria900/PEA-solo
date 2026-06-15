@@ -196,7 +196,7 @@
                 v-for="z in zonaCalculo.zonasAtravessadas"
                 :key="z"
                 class="zona-badge-small"
-              >Zona {{ z }} · 1,50€</span>
+              >Zona {{ z }}</span>
             </div>
             <div class="price-action">
               <span class="price">{{ formatarPreco(viagem.preco) }}€</span>
@@ -212,10 +212,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../store/auth'
+import axios from 'axios'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // ─────────────────────────────────────────────
 // BASE DE DADOS DE PARAGENS POR ZONA (MOCK)
@@ -223,36 +226,37 @@ const router = useRouter()
 // ─────────────────────────────────────────────
 const PRECO_POR_ZONA = 1.50
 
-const PARAGENS = [
-  // Zona 1
-  { nome: 'Viana do Castelo',  zona: 1 },
-  { nome: 'Barcelos',          zona: 1 },
-  { nome: 'Braga',             zona: 1 },
-  { nome: 'Guimarães',         zona: 1 },
-  { nome: 'Fafe',              zona: 1 },
-  // Zona 2
-  { nome: 'Famalicão',         zona: 2 },
-  { nome: 'Santo Tirso',       zona: 2 },
-  { nome: 'Maia',              zona: 2 },
-  { nome: 'Trofa',             zona: 2 },
-  { nome: 'Póvoa de Varzim',   zona: 2 },
-  // Zona 3
-  { nome: 'Porto',             zona: 3 },
-  { nome: 'Matosinhos',        zona: 3 },
-  { nome: 'Gondomar',          zona: 3 },
-  { nome: 'Valongo',           zona: 3 },
-  // Zona 4
-  { nome: 'Gaia',              zona: 4 },
-  { nome: 'Espinho',           zona: 4 },
-  { nome: 'Aveiro',            zona: 4 },
-]
+const PARAGENS = ref([])
+const catalogoBilhete = ref([])
+
+const userStatus = computed(() => authStore.user?.perfil || 'NORMAL')
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/paragens')
+    PARAGENS.value = res.data.map((p, index) => ({
+      id: p.id,
+      nome: p.nome,
+      zona: (index % 2) + 1 // Intercalar entre zona 1 e zona 2 para testes
+    }))
+  } catch (err) {
+    console.error('Erro ao carregar paragens', err)
+  }
+
+  try {
+    const res = await axios.get('/api/catalogo/titulos')
+    catalogoBilhete.value = res.data.bilhete || []
+  } catch (err) {
+    console.error('Erro ao carregar catalogo', err)
+  }
+})
 
 // ─────────────────────────────────────────────
 // CÁLCULO DE PREÇO POR ZONAS
-// Regra: paga 1,50€ por cada zona atravessada.
-// Zonas são contíguas (1→2→3). De Z1 a Z3 = 3 zonas = 4,50€
 // ─────────────────────────────────────────────
 function calcularPreco(paragemInicio, paragemFim) {
+  if (!paragemInicio || !paragemFim) return { preco: 0, zonaInicio: 1, zonaFim: 1, zonasAtravessadas: [1] }
+
   const zonaMin = Math.min(paragemInicio.zona, paragemFim.zona)
   const zonaMax = Math.max(paragemInicio.zona, paragemFim.zona)
 
@@ -261,11 +265,17 @@ function calcularPreco(paragemInicio, paragemFim) {
     zonasAtravessadas.push(z)
   }
 
+  const numToLetter = { 1: 'A', 2: 'B', 3: 'C', 4: 'D' }
+  const targetZona = zonasAtravessadas.length === 1 ? `Zona ${numToLetter[zonasAtravessadas[0]] || 'A'}` : 'Rede completa'
+  const precoObj = catalogoBilhete.value.find(x => x.perfil === userStatus.value && x.zona === targetZona)
+  const preco = precoObj ? precoObj.preco : (zonasAtravessadas.length === 1 ? 1.00 : 1.50)
+
   return {
-    preco: zonasAtravessadas.length * PRECO_POR_ZONA,
+    preco,
     zonaInicio: paragemInicio.zona,
     zonaFim: paragemFim.zona,
     zonasAtravessadas,
+    zonasIds: (precoObj && precoObj.zona_id) ? [precoObj.zona_id] : []
   }
 }
 
@@ -295,23 +305,26 @@ const datasDisponiveis = ref([
   { id: 4, label: '16 Jun' },
 ])
 
-// Rotas populares com preco já calculado
+// Rotas populares dinâmicas
 const rotasPopulares = computed(() => {
+  if (PARAGENS.value.length < 6) return []
+  
   const pares = [
-    { origem: 'Braga',     destino: 'Porto' },
-    { origem: 'Guimarães', destino: 'Matosinhos' },
-    { origem: 'Barcelos',  destino: 'Gaia' },
+    { origem: PARAGENS.value[0].nome, destino: PARAGENS.value[2].nome }, // Ex: Zona 1 -> Zona 1
+    { origem: PARAGENS.value[1].nome, destino: PARAGENS.value[3].nome }, // Ex: Zona 2 -> Zona 2
+    { origem: PARAGENS.value[0].nome, destino: PARAGENS.value[1].nome }, // Ex: Zona 1 -> Zona 2
   ]
+  
   return pares.map((r, i) => {
-    const pInicio = PARAGENS.find(p => p.nome === r.origem)
-    const pFim    = PARAGENS.find(p => p.nome === r.destino)
+    const pInicio = PARAGENS.value.find(p => p.nome === r.origem)
+    const pFim    = PARAGENS.value.find(p => p.nome === r.destino)
     const calc    = calcularPreco(pInicio, pFim)
     return {
       id: i + 1,
       origem: r.origem,
       destino: r.destino,
-      zonaOrigem: pInicio.zona,
-      zonaDestino: pFim.zona,
+      zonaOrigem: pInicio ? pInicio.zona : 1,
+      zonaDestino: pFim ? pFim.zona : 1,
       preco: calc.preco,
     }
   })
@@ -323,7 +336,7 @@ const rotasPopulares = computed(() => {
 function filtrarParagens(texto) {
   if (!texto || texto.length < 2) return []
   const q = texto.toLowerCase()
-  return PARAGENS.filter(p => p.nome.toLowerCase().includes(q)).slice(0, 5)
+  return PARAGENS.value.filter(p => p.nome.toLowerCase().includes(q)).slice(0, 5)
 }
 
 function onOrigemInput() {
@@ -370,8 +383,8 @@ const trocar = () => {
 }
 
 const preencherRota = (rota) => {
-  const pOrigem  = PARAGENS.find(p => p.nome === rota.origem)
-  const pDestino = PARAGENS.find(p => p.nome === rota.destino)
+  const pOrigem  = PARAGENS.value.find(p => p.nome === rota.origem)
+  const pDestino = PARAGENS.value.find(p => p.nome === rota.destino)
   origemSelecionada.value  = pOrigem
   destinoSelecionado.value = pDestino
   origemInput.value  = pOrigem.nome
@@ -382,14 +395,22 @@ const preencherRota = (rota) => {
 const handleSearch = () => {
   erroZonas.value = ''
 
-  // Validação — tem de ter seleccionado uma paragem válida do dropdown
+  // Validação — tenta associar o texto digitado se o user não clicou na sugestão
   if (!origemSelecionada.value) {
-    erroZonas.value = 'Seleciona a origem na lista de sugestões.'
-    return
+    const match = PARAGENS.value.find(p => p.nome.toLowerCase() === origemInput.value.trim().toLowerCase())
+    if (match) origemSelecionada.value = match
+    else {
+      erroZonas.value = 'Seleciona a origem na lista de sugestões.'
+      return
+    }
   }
   if (!destinoSelecionado.value) {
-    erroZonas.value = 'Seleciona o destino na lista de sugestões.'
-    return
+    const match = PARAGENS.value.find(p => p.nome.toLowerCase() === destinoInput.value.trim().toLowerCase())
+    if (match) destinoSelecionado.value = match
+    else {
+      erroZonas.value = 'Seleciona o destino na lista de sugestões.'
+      return
+    }
   }
   if (origemSelecionada.value.nome === destinoSelecionado.value.nome) {
     erroZonas.value = 'A origem e o destino não podem ser iguais.'
@@ -427,11 +448,13 @@ const comprar = (viagem) => {
     query: {
       origin:     origemSelecionada.value.nome,
       dest:       destinoSelecionado.value.nome,
+      originId:   origemSelecionada.value.id,
+      destId:     destinoSelecionado.value.id,
       price:      viagem.preco,
       zonaInicio: zonaCalculo.value.zonaInicio,
       zonaFim:    zonaCalculo.value.zonaFim,
-      // Envia as zonas separadas por vírgula para o Buy poder listar
       zonas:      zonaCalculo.value.zonasAtravessadas.join(','),
+      zonasIds:   zonaCalculo.value.zonasIds.join(',')
     }
   })
 }

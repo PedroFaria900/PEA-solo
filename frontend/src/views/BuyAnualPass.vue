@@ -97,15 +97,15 @@
           <div class="step-num active">2</div>
           <div class="step-label-group">
             <span class="step-label">Zonas Abrangidas</span>
-            <span class="step-sublabel">Escolhe as zonas para o teu passe (300€/cada)</span>
+            <span class="step-sublabel">Escolhe as zonas para o teu passe</span>
           </div>
         </div>
 
         <div class="zone-list">
-          <label class="zone-option" v-for="zona in 3" :key="zona" :class="{ selected: selectedZones.includes(zona) }">
+          <label class="zone-option" v-for="zona in zonasDisponiveis" :key="zona" :class="{ selected: selectedZones.includes(zona) }">
             <div class="zone-info">
-              <span class="zone-name">Zona {{ zona }}</span>
-              <span class="zone-desc">Acesso ilimitado na Zona {{ zona }}</span>
+              <span class="zone-name">{{ zona }}</span>
+              <span class="zone-desc">Acesso ilimitado na {{ zona }}</span>
             </div>
             <div class="checkbox-outer" :class="{ active: selectedZones.includes(zona) }">
               <svg v-if="selectedZones.includes(zona)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -277,9 +277,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
+import axios from 'axios'
 import ConfirmModal from '../components/ConfirmModal.vue'
 import InsufficientBalanceModal from '../components/InsufficientBalanceModal.vue'
 
@@ -287,28 +288,56 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 // ── Estado ──
-const selectedZones = ref([1]) 
+const selectedZones = ref(['Zona A']) 
 const selectedMethod = ref('wallet')
 const isProcessing = ref(false)
 const paymentStatus = ref(null)
 const showConfirmModal = ref(false)
 
 // ── Lógica do Estatuto e Preços ──
-const precoPorZona = 300 
 const userBalance = computed(() => authStore.userSaldo || 0)
 
-// Simulação de estatuto
-const userStatus = ref('Estudante') 
+// Estatuto real do utilizador
+const userStatus = computed(() => authStore.user?.perfil || 'NORMAL')
 
-const discount = computed(() => {
-  if (userStatus.value === 'Estudante') return 0.50 
-  if (userStatus.value === 'Senior') return 0.25 
-  return 0 
+const catalogoPasse = ref([])
+
+const zonasDisponiveis = computed(() => {
+  const z = new Set()
+  catalogoPasse.value.forEach(t => {
+    if (t.zona && t.zona !== 'Rede completa') z.add(t.zona)
+  })
+  return Array.from(z).sort()
 })
 
-const basePrice = computed(() => selectedZones.value.length * precoPorZona)
-const discountValue = computed(() => basePrice.value * discount.value)
-const finalPrice = computed(() => basePrice.value - discountValue.value)
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/catalogo/titulos')
+    catalogoPasse.value = res.data.passe || []
+  } catch (err) {
+    console.error('Erro ao carregar catalogo', err)
+  }
+})
+
+// Mapeamento simplificado: 1 zona selecionada -> A própria zona, >1 zona -> 'Rede completa'
+const targetZona = computed(() => {
+  if (selectedZones.value.length === 0) return ''
+  if (selectedZones.value.length === 1) return selectedZones.value[0]
+  return 'Rede completa'
+})
+
+const basePrice = computed(() => {
+  const t = catalogoPasse.value.find(x => x.perfil === 'NORMAL' && x.zona === targetZona.value && x.periodo === 'ANUAL')
+  return t ? t.preco : 0
+})
+
+const finalPrice = computed(() => {
+  const t = catalogoPasse.value.find(x => x.perfil === userStatus.value && x.zona === targetZona.value && x.periodo === 'ANUAL')
+  return t ? t.preco : 0
+})
+
+const discountValue = computed(() => Math.max(0, basePrice.value - finalPrice.value))
+const discount = computed(() => basePrice.value > 0 ? discountValue.value / basePrice.value : 0)
 
 const formattedBasePrice = computed(() => basePrice.value.toFixed(2).replace('.', ','))
 const formattedDiscountValue = computed(() => discountValue.value.toFixed(2).replace('.', ','))
@@ -324,24 +353,37 @@ const dataInicio = new Intl.DateTimeFormat('pt-PT', dateOptions).format(today)
 const dataFim = new Intl.DateTimeFormat('pt-PT', dateOptions).format(nextYear)
 
 // ── Confirmar compra ──
-const confirmarCompra = () => {
+const confirmarCompra = async () => {
+  if (selectedMethod.value === 'wallet' && userBalance.value < finalPrice.value) {
+    paymentStatus.value = 'error'
+    showConfirmModal.value = false
+    return
+  }
+
   isProcessing.value = true
 
-  setTimeout(() => {
-    isProcessing.value = false
-    showConfirmModal.value = false
-    
-    if (selectedMethod.value === 'wallet' && userBalance.value < finalPrice.value) {
-      paymentStatus.value = 'error'
-      return
-    }
+  try {
+    const ids = targetZona.value === 'Rede completa' ? [] : selectedZones.value.map(zNome => {
+      const t = catalogoPasse.value.find(x => x.zona === zNome)
+      return t ? t.zona_id : null
+    }).filter(id => id)
 
-    if (selectedMethod.value === 'wallet' && authStore.user) {
-      authStore.user.saldo -= finalPrice.value
-    }
+    await axios.post('/api/titulos', {
+      tipo: 'PASSE',
+      periodo: 'ANUAL',
+      zonasIds: ids
+    })
+    
+    await authStore.fetchProfile()
     
     paymentStatus.value = 'success'
-  }, 1200)
+  } catch (err) {
+    console.error('Erro na compra', err)
+    paymentStatus.value = 'error' 
+  } finally {
+    isProcessing.value = false
+    showConfirmModal.value = false
+  }
 }
 
 // ── Ações dos Modais ──

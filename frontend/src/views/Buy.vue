@@ -100,7 +100,7 @@
           <path d="M12 8v4M12 16h.01"/>
         </svg>
         <p class="info-text">
-          O preço é calculado por zonas atravessadas. Cada zona tem o custo fixo de <strong>1,50€</strong>, independentemente da distância percorrida.
+          O preço final é calculado com base nas zonas atravessadas e no teu perfil de utilizador (Normal, Estudante, Sénior).
         </p>
       </div>
 
@@ -108,8 +108,8 @@
         <div class="step-header">
           <div class="step-num active">2</div>
           <div class="step-label-group">
-            <span class="step-label">Detalhes do Preço</span>
-            <span class="step-sublabel">Custo por zona atravessada</span>
+            <span class="step-label">Detalhes da Viagem</span>
+            <span class="step-sublabel">Zonas atravessadas</span>
           </div>
         </div>
 
@@ -124,7 +124,7 @@
               </div>
               <span class="zone-name">Zona {{ z }}</span>
             </div>
-            <span class="zone-cost">1,50€</span>
+            <!-- Custo por zona removido -->
           </div>
 
           <div class="zones-total-divider"></div>
@@ -270,8 +270,9 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
+import axios from 'axios'
 import ConfirmModal from '../components/ConfirmModal.vue'
-import InsufficientBalanceModal from '../components/InsufficientBalanceModal.vue' // 1. IMPORTAR
+import InsufficientBalanceModal from '../components/InsufficientBalanceModal.vue'
 
 const route    = useRoute()
 const router   = useRouter()
@@ -303,24 +304,34 @@ const paymentStatus  = ref(null) // null | 'success' | 'error'
 const showConfirmModal = ref(false)
 
 // ── Confirmar compra ──
-const confirmarCompra = () => {
+const confirmarCompra = async () => {
+  if (selectedMethod.value === 'wallet' && userBalance.value < price.value) {
+    paymentStatus.value = 'error'
+    showConfirmModal.value = false
+    return
+  }
+
   isProcessing.value = true
 
-  setTimeout(() => {
-    isProcessing.value = false
-    showConfirmModal.value = false // Fecha o modal de confirmação
-    
-    if (selectedMethod.value === 'wallet' && userBalance.value < price.value) {
-      paymentStatus.value = 'error'
-      return
-    }
+  try {
+    const zIds = route.query.zonasIds ? route.query.zonasIds.split(',').filter(id => id.trim().length > 0) : []
 
-    if (selectedMethod.value === 'wallet' && authStore.user) {
-      authStore.user.saldo -= price.value
-    }
+    await axios.post('/api/titulos', {
+      tipo: 'BILHETE',
+      zonasIds: zIds
+    })
+    
+    // Atualiza o saldo do utilizador localmente ou pedindo novo perfil
+    await authStore.fetchProfile()
     
     paymentStatus.value = 'success'
-  }, 1200)
+  } catch (err) {
+    console.error('Erro na compra', err)
+    paymentStatus.value = 'error' // Or you could show a specific error if you want
+  } finally {
+    isProcessing.value = false
+    showConfirmModal.value = false
+  }
 }
 
 // ── Ações dos Modais ──

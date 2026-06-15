@@ -33,7 +33,10 @@ public class CatalogoController {
                 "id", t.getId(),
                 "nome", t.getTipoTitulo() + " " + t.getPerfilUtente(),
                 "preco", t.getPreco(),
-                "zona", t.getZona() != null ? t.getZona().getNome() : "Rede completa"
+                "zona", t.getZona() != null ? t.getZona().getNome() : "Rede completa",
+                "zona_id", t.getZona() != null ? t.getZona().getId().toString() : "",
+                "periodo", t.getPeriodo() != null ? t.getPeriodo().name() : "",
+                "perfil", t.getPerfilUtente().name()
             ), Collectors.toList())
         ));
 
