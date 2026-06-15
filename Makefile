@@ -34,7 +34,6 @@ MINIKUBE_CPUS := 8
         k8s-start k8s-deploy k8s-status k8s-tunnel k8s-stop \
         seed-generate seed-local seed-k8s pip-install \
         snapshot-local restore-local snapshot-k8s restore-k8s \
-        indexes-local indexes-k8s \
         test-user admin-user \
         k6-fase1 k6-fase2 k6-fase3 k6-validacao k6-all \
         clean clean-local clean-k8s
@@ -222,34 +221,6 @@ restore-k8s: ## Restore data/loadtest.dump into the k8s DB (requires port-forwar
 	$(DOCKER_PG) pg_restore -h localhost -p $(K8S_DB_PORT) -U $(DB_USER) -j 4 --clean --if-exists -d $(DB_NAME) data/loadtest.dump; \
 	kill $$PF_PID 2>/dev/null; \
 	echo "✅ Kubernetes database restored"
-
-# ══════════════════════════════════════════════════════════════
-# DATABASE INDEXES
-# ══════════════════════════════════════════════════════════════
-
-define INDEX_SQL
-CREATE INDEX IF NOT EXISTS idx_validacao_momento         ON validacao(momento);
-CREATE INDEX IF NOT EXISTS idx_validacao_resultado       ON validacao(resultado);
-CREATE INDEX IF NOT EXISTS idx_validacao_titulo_momento  ON validacao(titulo_id, momento);
-CREATE INDEX IF NOT EXISTS idx_validacao_leitor_momento  ON validacao(leitor_id, momento);
-CREATE INDEX IF NOT EXISTS idx_viagem_momento            ON viagem(momento);
-CREATE INDEX IF NOT EXISTS idx_viagem_validacao          ON viagem(validacao_id);
-CREATE INDEX IF NOT EXISTS idx_linha_paragem_seq         ON linha_paragem(linha_id, sentido, sequencia);
-CREATE INDEX IF NOT EXISTS idx_titulo_utente             ON titulo_transporte(utente_id);
-CREATE INDEX IF NOT EXISTS idx_lp_paragem                ON linha_paragem(paragem_id);
-endef
-export INDEX_SQL
-
-indexes-local: ## Apply performance indexes on local PostgreSQL
-	@echo "📊 Applying indexes to local database..."
-	@echo "$$INDEX_SQL" | docker exec -i bilhetica-postgres psql -U $(DB_USER) -d $(DB_NAME)
-	@echo "✅ Indexes applied (local)"
-
-indexes-k8s: ## Apply performance indexes on Kubernetes PostgreSQL
-	@echo "📊 Applying indexes to k8s database..."
-	@kubectl exec -it $$(kubectl get pod -l app=postgres -o jsonpath="{.items[0].metadata.name}") \
-		-- psql -U $(DB_USER) -d $(DB_NAME) -c "$$INDEX_SQL"
-	@echo "✅ Indexes applied (k8s)"
 
 # ══════════════════════════════════════════════════════════════
 # TEST USER

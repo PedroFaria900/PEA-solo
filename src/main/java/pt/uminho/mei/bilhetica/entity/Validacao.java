@@ -11,7 +11,9 @@ import java.util.UUID;
 @Entity
 @Table(name = "validacao", indexes = {
     @Index(name = "idx_validacao_titulo_momento", columnList = "titulo_id, momento"),
-    @Index(name = "idx_validacao_leitor_momento", columnList = "leitor_id, momento")
+    @Index(name = "idx_validacao_leitor_momento", columnList = "leitor_id, momento"),
+    @Index(name = "idx_validacao_momento",        columnList = "momento"),
+    @Index(name = "idx_validacao_resultado",       columnList = "resultado")
 })
 @Data
 @NoArgsConstructor

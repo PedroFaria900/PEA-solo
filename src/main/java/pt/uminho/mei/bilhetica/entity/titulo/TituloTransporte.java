@@ -14,7 +14,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Entity
-@Table(name = "titulo_transporte")
+@Table(name = "titulo_transporte", indexes = {
+    @Index(name = "idx_titulo_utente", columnList = "utente_id")
+})
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "tipo_titulo", discriminatorType = DiscriminatorType.STRING)
 @Data
