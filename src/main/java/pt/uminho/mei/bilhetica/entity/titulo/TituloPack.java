@@ -2,13 +2,11 @@ package pt.uminho.mei.bilhetica.entity.titulo;
 
 import jakarta.persistence.*;
 import lombok.*;
-import pt.uminho.mei.bilhetica.entity.ZonaTarifaria;
 import pt.uminho.mei.bilhetica.enums.EstadoTitulo;
 import pt.uminho.mei.bilhetica.enums.TipoTitulo;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Set;
 
 @Entity
 @DiscriminatorValue("PACK")
@@ -24,18 +22,9 @@ public class TituloPack extends TituloTransporte {
     @Column
     private Integer viagensRestantes;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "zona_id")
-    private ZonaTarifaria zona;
-
     @Override
     public TipoTitulo tipo() {
         return TipoTitulo.PACK;
-    }
-
-    @Override
-    public Set<ZonaTarifaria> zonasAbrangidas() {
-        return zona != null ? Set.of(zona) : Set.of();
     }
 
     @Override
@@ -61,11 +50,6 @@ public class TituloPack extends TituloTransporte {
     @Override
     public Integer viagensRestantesResponse() {
         return viagensRestantes;
-    }
-
-    @Override
-    public String areaGeografica() {
-        return zona != null ? zona.getNome() : null;
     }
 
     @Override

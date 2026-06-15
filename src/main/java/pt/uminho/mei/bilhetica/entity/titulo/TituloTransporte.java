@@ -10,6 +10,7 @@ import pt.uminho.mei.bilhetica.enums.TipoTitulo;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "titulo_transporte")
@@ -35,6 +36,17 @@ public abstract class TituloTransporte {
     @Version
     private Long version;
 
+    /** Conjunto de zonas tarifárias cobertas. Vazio = sem restrição (passe-tudo). */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "titulo_zona",
+        joinColumns = @JoinColumn(name = "titulo_id"),
+        inverseJoinColumns = @JoinColumn(name = "zona_id")
+    )
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    private Set<ZonaTarifaria> zonas;
+
     // ─────────────────────────────────────────────────────────────
     // Comportamento polimórfico — cada subtipo decide as suas regras.
     // Adicionar um novo tipo de título = nova subclasse que implementa
@@ -45,7 +57,9 @@ public abstract class TituloTransporte {
     public abstract TipoTitulo tipo();
 
     /** Zonas que o título cobre. Conjunto vazio = sem restrição de zona (passe-tudo). */
-    public abstract Set<ZonaTarifaria> zonasAbrangidas();
+    public Set<ZonaTarifaria> zonasAbrangidas() {
+        return zonas != null ? zonas : Set.of();
+    }
 
     /** Indica se o título já não é válido no instante dado. */
     public abstract boolean estaExpirado(LocalDateTime agora);
@@ -65,7 +79,12 @@ public abstract class TituloTransporte {
     public abstract Integer viagensRestantesResponse();
 
     /** Descrição textual da área geográfica coberta (null/vazio quando não aplicável). */
-    public abstract String areaGeografica();
+    public String areaGeografica() {
+        if (zonas == null || zonas.isEmpty()) {
+            return null;
+        }
+        return zonas.stream().map(ZonaTarifaria::getNome).collect(Collectors.joining(", "));
+    }
 
     /** Instante de expiração para apresentação (null se ainda não determinado). */
     public abstract LocalDateTime expiraEm();

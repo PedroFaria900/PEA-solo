@@ -10,11 +10,17 @@ http:
     type: json
     data: |-
       {
-        "tipo": "BILHETE",
-        "validade": "2024-12-31",
-        "zonasIds": ["123e4567-e89b-12d3-a456-426614174000"],
-        "viagens": 10
+        "tipo": "PASSE",
+        "validade": "2026-12-31",
+        "zonasIds": ["{{zonaAId}}"]
       }
+  # Exemplos de uso:
+  # PASSE numa zona:     tipo=PASSE, zonasIds=["<zonaAId>"], validade=...
+  # PASSE interzona:     tipo=PASSE, zonasIds=["<zonaAId>","<zonaBId>"], validade=...
+  # PASSE tudo:          tipo=PASSE, zonasIds=[], validade=...
+  # PACK com zona:       tipo=PACK,  zonasIds=["<zonaAId>"], validade=..., viagens=10
+  # BILHETE global:      tipo=BILHETE, zonasIds=[]
+  # Todos os tipos usam 'zonasIds' (lista); lista vazia = passe-tudo (tarifário global).
 
   auth: inherit
 

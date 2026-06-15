@@ -63,7 +63,7 @@ print(f"Config: SEED_ROWS={SEED_ROWS}, NUM_UTENTES={NUM_UTENTES}, "
 TABLES = [
     'paragem', 'linha', 'linha_paragem', 'zona_tarifaria',
     'zona_tarifaria_paragem', 'tarifario', 'leitor', 'utente',
-    'titulo_transporte', 'titulo_bilhete_zona', 'transacao',
+    'titulo_transporte', 'titulo_zona', 'transacao',
     'validacao', 'viagem',
 ]
 
@@ -78,8 +78,8 @@ COLUMNS = {
     'leitor': ['id', 'codigo', 'linha_id', 'estado'],
     'utente': ['id', 'nome', 'email', 'telemovel', 'password_hash', 'saldo', 'perfil', 'version'],
     'titulo_transporte': ['id', 'utente_id', 'estado', 'tipo_titulo', 'version',
-                          'validade', 'viagens_restantes', 'zona_id', 'ativado_em'],
-    'titulo_bilhete_zona': ['titulo_bilhete_id', 'zona_id'],
+                          'validade', 'viagens_restantes', 'ativado_em'],
+    'titulo_zona': ['titulo_id', 'zona_id'],
     'transacao': ['id', 'utente_id', 'valor', 'tipo', 'momento', 'descricao'],
     'validacao': ['id', 'titulo_id', 'leitor_id', 'momento', 'resultado'],
     'viagem': ['id', 'validacao_id', 'momento'],
@@ -151,13 +151,49 @@ for pid in stop_id_map.values():
     w['zona_tarifaria_paragem'].writerow([zona_a_id if random.random() < 0.5 else zona_b_id, pid])
 
 # ── TARIFARIO ───────────────────────────────────────────────────────────────
+# Linha global (zona IS NULL): qualquer tipo com zonasIds=[] usa este preço.
+# Linhas por zona: compras interzona somam as linhas de cada zona pedida.
+# Rede Completa (zona_rede_id): mantida para seeded titles (PASSE rede completa).
 tarifas = [
-    ('PASSE', 'NORMAL', zona_rede_id, 40.00), ('PASSE', 'ESTUDANTE', zona_rede_id, 20.00),
-    ('PASSE', 'SENIOR', zona_rede_id, 20.00),
-    ('BILHETE', 'NORMAL', None, 1.50), ('BILHETE', 'ESTUDANTE', None, 1.20),
-    ('BILHETE', 'SENIOR', None, 1.20),
-    ('PACK', 'NORMAL', None, 1.30), ('PACK', 'ESTUDANTE', None, 1.00),
-    ('PACK', 'SENIOR', None, 1.00),
+    # --- PASSE ---
+    ('PASSE', 'NORMAL',    zona_rede_id, 40.00),
+    ('PASSE', 'ESTUDANTE', zona_rede_id, 20.00),
+    ('PASSE', 'SENIOR',    zona_rede_id, 20.00),
+    ('PASSE', 'NORMAL',    None,         40.00),   # global (passe-tudo)
+    ('PASSE', 'ESTUDANTE', None,         20.00),
+    ('PASSE', 'SENIOR',    None,         20.00),
+    ('PASSE', 'NORMAL',    zona_a_id,    25.00),   # zona A
+    ('PASSE', 'ESTUDANTE', zona_a_id,    13.00),
+    ('PASSE', 'SENIOR',    zona_a_id,    13.00),
+    ('PASSE', 'NORMAL',    zona_b_id,    25.00),   # zona B
+    ('PASSE', 'ESTUDANTE', zona_b_id,    13.00),
+    ('PASSE', 'SENIOR',    zona_b_id,    13.00),
+    # --- PACK (preço por viagem) ---
+    ('PACK', 'NORMAL',    None,         1.30),     # global
+    ('PACK', 'ESTUDANTE', None,         1.00),
+    ('PACK', 'SENIOR',    None,         1.00),
+    ('PACK', 'NORMAL',    zona_rede_id, 1.30),     # rede completa
+    ('PACK', 'ESTUDANTE', zona_rede_id, 1.00),
+    ('PACK', 'SENIOR',    zona_rede_id, 1.00),
+    ('PACK', 'NORMAL',    zona_a_id,    0.90),     # zona A
+    ('PACK', 'ESTUDANTE', zona_a_id,    0.70),
+    ('PACK', 'SENIOR',    zona_a_id,    0.70),
+    ('PACK', 'NORMAL',    zona_b_id,    0.90),     # zona B
+    ('PACK', 'ESTUDANTE', zona_b_id,    0.70),
+    ('PACK', 'SENIOR',    zona_b_id,    0.70),
+    # --- BILHETE ---
+    ('BILHETE', 'NORMAL',    None,         1.50),  # global
+    ('BILHETE', 'ESTUDANTE', None,         1.20),
+    ('BILHETE', 'SENIOR',    None,         1.20),
+    ('BILHETE', 'NORMAL',    zona_rede_id, 1.50),  # rede completa
+    ('BILHETE', 'ESTUDANTE', zona_rede_id, 1.20),
+    ('BILHETE', 'SENIOR',    zona_rede_id, 1.20),
+    ('BILHETE', 'NORMAL',    zona_a_id,    1.00),  # zona A
+    ('BILHETE', 'ESTUDANTE', zona_a_id,    0.85),
+    ('BILHETE', 'SENIOR',    zona_a_id,    0.85),
+    ('BILHETE', 'NORMAL',    zona_b_id,    1.00),  # zona B
+    ('BILHETE', 'ESTUDANTE', zona_b_id,    0.85),
+    ('BILHETE', 'SENIOR',    zona_b_id,    0.85),
 ]
 for tipo, perfil, zona, preco in tarifas:
     w['tarifario'].writerow([str(uuid.uuid4()), tipo, perfil, zona, preco])
@@ -200,20 +236,22 @@ for i in range(NUM_UTENTES):
     passe_id = str(uuid.uuid4())
     passe_tid_arr.append(passe_id)
     w['titulo_transporte'].writerow([passe_id, uid, 'ATIVO', 'PASSE', 0,
-                                     '2030-12-31', None, zona_rede_id, None])
+                                     '2030-12-31', None, None])
+    w['titulo_zona'].writerow([passe_id, zona_rede_id])
 
     pack_id = ''
     if random.random() < PACK_FRAC:
         pack_id = str(uuid.uuid4())
         w['titulo_transporte'].writerow([pack_id, uid, 'ATIVO', 'PACK', 0,
-                                         '2030-12-31', 10, None, None])
+                                         '2030-12-31', 10, None])
+        # Pack sem zona → passe-tudo (titulo_zona não recebe linha)
 
     bilhete_id = ''
     if random.random() < BILHETE_FRAC:
         bilhete_id = str(uuid.uuid4())
         w['titulo_transporte'].writerow([bilhete_id, uid, 'ATIVO', 'BILHETE', 0,
-                                         None, None, None, None])
-        w['titulo_bilhete_zona'].writerow([bilhete_id, zona_rede_id])
+                                         None, None, None])
+        w['titulo_zona'].writerow([bilhete_id, zona_rede_id])
 
     manifest.writerow([email, PASSWORD_PLAIN, passe_id, pack_id, bilhete_id,
                        'Rede Completa', example_leitor_codigo])

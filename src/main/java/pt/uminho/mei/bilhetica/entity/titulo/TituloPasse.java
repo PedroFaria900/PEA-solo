@@ -2,12 +2,10 @@ package pt.uminho.mei.bilhetica.entity.titulo;
 
 import jakarta.persistence.*;
 import lombok.*;
-import pt.uminho.mei.bilhetica.entity.ZonaTarifaria;
 import pt.uminho.mei.bilhetica.enums.TipoTitulo;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Set;
 
 @Entity
 @DiscriminatorValue("PASSE")
@@ -20,18 +18,9 @@ public class TituloPasse extends TituloTransporte {
     @Column
     private LocalDate validade;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "zona_id")
-    private ZonaTarifaria zona;
-
     @Override
     public TipoTitulo tipo() {
         return TipoTitulo.PASSE;
-    }
-
-    @Override
-    public Set<ZonaTarifaria> zonasAbrangidas() {
-        return zona != null ? Set.of(zona) : Set.of();
     }
 
     @Override
@@ -52,11 +41,6 @@ public class TituloPasse extends TituloTransporte {
     @Override
     public Integer viagensRestantesResponse() {
         return null;
-    }
-
-    @Override
-    public String areaGeografica() {
-        return zona != null ? zona.getNome() : null;
     }
 
     @Override

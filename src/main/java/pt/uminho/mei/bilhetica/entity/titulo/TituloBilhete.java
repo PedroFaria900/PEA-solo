@@ -2,12 +2,9 @@ package pt.uminho.mei.bilhetica.entity.titulo;
 
 import jakarta.persistence.*;
 import lombok.*;
-import pt.uminho.mei.bilhetica.entity.ZonaTarifaria;
 import pt.uminho.mei.bilhetica.enums.TipoTitulo;
 
 import java.time.LocalDateTime;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Entity
 @DiscriminatorValue("BILHETE")
@@ -24,27 +21,12 @@ public class TituloBilhete extends TituloTransporte {
     @Column(name = "ativado_em")
     private LocalDateTime ativadoEm;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "titulo_bilhete_zona",
-        joinColumns = @JoinColumn(name = "titulo_bilhete_id"),
-        inverseJoinColumns = @JoinColumn(name = "zona_id")
-    )
-    @EqualsAndHashCode.Exclude
-    @ToString.Exclude
-    private Set<ZonaTarifaria> zonas;
-
     /** Janela de validade de um bilhete após activação. */
     private static final long DURACAO_HORAS = 1;
 
     @Override
     public TipoTitulo tipo() {
         return TipoTitulo.BILHETE;
-    }
-
-    @Override
-    public Set<ZonaTarifaria> zonasAbrangidas() {
-        return zonas != null ? zonas : Set.of();
     }
 
     @Override
@@ -67,14 +49,6 @@ public class TituloBilhete extends TituloTransporte {
     @Override
     public Integer viagensRestantesResponse() {
         return null;
-    }
-
-    @Override
-    public String areaGeografica() {
-        if (zonas == null || zonas.isEmpty()) {
-            return null;
-        }
-        return zonas.stream().map(ZonaTarifaria::getNome).collect(Collectors.joining(", "));
     }
 
     @Override

@@ -11,8 +11,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ComprarTituloRequest {
     private TipoTitulo tipo;
-    private LocalDate validade; // Usado por Passe e Pack (Bilhete activa-se na 1ª validação)
-    private UUID zonaId; // Used for Passe and Pack
-    private List<UUID> zonasIds; // Used for Bilhete
-    private Integer viagens;
+    private LocalDate validade; // Passe e Pack (Bilhete activa-se na 1ª validação)
+    private List<UUID> zonasIds; // Zonas cobertas; vazio/null = passe-tudo (todos os tipos)
+    private Integer viagens;    // Obrigatório para Pack
 }
