@@ -8,9 +8,13 @@ import ComprarBilhetes from '../views/ComprarBilhetes.vue'
 import Simulator from '../views/Simulator.vue'
 import Trips from '../views/Trips.vue'
 import Search from '../views/Search.vue'
+import BuyMonthlyPass from '../views/BuyMonthlyPass.vue'
 import Profile from '../views/Profile.vue'
 import Wallet from '../views/Wallet.vue'
 import ChargeWallet from '../views/ChargeWallet.vue'
+import BuyAnualPass from '../views/BuyAnualPass.vue'
+import BuyPack10 from '../views/BuyPack10.vue'
+import BuyPack20 from '../views/BuyPack20.vue'
 
 const routes = [
   {
@@ -79,6 +83,30 @@ const routes = [
     component: ComprarBilhetes,
     meta: { requiresAuth: true }
   },
+  {
+    path: '/buy-monthpass',
+    name: 'BuyMonthlyPass',
+    component: BuyMonthlyPass,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/buy-anualpass',
+    name: 'BuyAnualPass',
+    component: BuyAnualPass,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/buy-pack10',
+    name: 'BuyPack10',
+    component: BuyPack10,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/buy-pack20',
+    name: 'BuyPack20',
+    component: BuyPack20,
+    meta: { requiresAuth: true }
+  }
 ]
 
 const router = createRouter({

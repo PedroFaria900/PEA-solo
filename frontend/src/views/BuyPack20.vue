@@ -1,7 +1,7 @@
 <template>
   <div class="buy-page">
 
-    <div class="hero-card">
+    <div class="hero-card pack-hero">
       <button class="back-btn" @click="router.back()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12"/>
@@ -13,27 +13,13 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
           <rect x="2" y="5" width="20" height="14" rx="2"/>
           <path d="M2 10h20"/>
-          <circle cx="7" cy="16" r="1" fill="#fff"/>
-          <circle cx="17" cy="16" r="1" fill="#fff"/>
         </svg>
-        AUTOCARRO · BILHETE SIMPLES
+        AUTOCARRO · PACK DE BILHETES
       </div>
 
-      <div class="hero-route">
-        <div class="hero-city">
-          <span class="hero-zone-pill">Z{{ zonaInicio }}</span>
-          <span class="hero-city-name">{{ origin }}</span>
-        </div>
-        <div class="hero-arrow">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-linecap="round">
-            <line x1="5" y1="12" x2="19" y2="12"/>
-            <polyline points="12 5 19 12 12 19"/>
-          </svg>
-        </div>
-        <div class="hero-city right">
-          <span class="hero-zone-pill">Z{{ zonaFim }}</span>
-          <span class="hero-city-name">{{ dest }}</span>
-        </div>
+      <div class="hero-pass-info">
+        <h2 class="hero-title">Pack 20 Bilhetes</h2>
+        <p class="hero-subtitle">Válido para as zonas selecionadas</p>
       </div>
 
       <div class="hero-meta">
@@ -42,10 +28,13 @@
             <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
-          {{ zonasLista.length }} zona{{ zonasLista.length > 1 ? 's' : '' }}
+          Zona {{ selectedZone.replace('Z', '') }}
         </span>
         <span class="hero-meta-sep">·</span>
-        <span class="hero-meta-item hero-price">{{ formattedPrice }}€</span>
+        <span class="hero-meta-item">
+          <span class="hero-price-strikethrough">{{ formattedBasePrice }}€</span>
+          <span class="hero-price">{{ formattedFinalPrice }}€</span>
+        </span>
       </div>
 
       <div class="hero-circle-1"></div>
@@ -54,91 +43,51 @@
 
     <div class="body-content">
 
-      <div class="step-card filled">
-        <div class="step-header">
-          <div class="step-num done">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-          </div>
-          <div class="step-label-group">
-            <span class="step-label">Escolha da Rota</span>
-            <span class="step-sublabel">Preenchida automaticamente</span>
-          </div>
-          <button class="step-change-btn" @click="router.back()">Alterar</button>
-        </div>
-
-        <div class="route-summary">
-          <div class="route-node">
-            <div class="node-dot origem"></div>
-            <span class="node-text">{{ origin }}</span>
-            <span class="node-zone">Zona {{ zonaInicio }}</span>
-          </div>
-          <div class="route-connector">
-            <div class="connector-line"></div>
-            <div class="connector-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2">
-                <rect x="2" y="5" width="20" height="14" rx="2"/>
-                <path d="M2 10h20"/>
-                <circle cx="7" cy="16" r="1" fill="#0085FF"/>
-                <circle cx="17" cy="16" r="1" fill="#0085FF"/>
-              </svg>
-            </div>
-            <div class="connector-line"></div>
-          </div>
-          <div class="route-node">
-            <div class="node-dot destino"></div>
-            <span class="node-text">{{ dest }}</span>
-            <span class="node-zone">Zona {{ zonaFim }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="info-banner">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2" stroke-linecap="round">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 8v4M12 16h.01"/>
-        </svg>
-        <p class="info-text">
-          O preço é calculado por zonas atravessadas. Cada zona tem o custo fixo de <strong>1,50€</strong>, independentemente da distância percorrida.
-        </p>
-      </div>
-
       <div class="step-card">
         <div class="step-header">
-          <div class="step-num active">2</div>
+          <div class="step-num active">1</div>
           <div class="step-label-group">
-            <span class="step-label">Detalhes do Preço</span>
-            <span class="step-sublabel">Custo por zona atravessada</span>
+            <span class="step-label">Zonas Abrangidas</span>
+            <span class="step-sublabel">Escolhe as zonas para os teus 20 bilhetes</span>
           </div>
         </div>
 
-        <div class="zones-breakdown">
-          <div class="zone-item" v-for="z in zonasLista" :key="z">
-            <div class="zone-item-left">
-              <div class="zone-icon-small">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2">
-                  <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                </svg>
-              </div>
-              <span class="zone-name">Zona {{ z }}</span>
-            </div>
-            <span class="zone-cost">1,50€</span>
+        <div class="zone-grid">
+          <div 
+            class="zone-card" 
+            :class="{ active: selectedZone === 'Z1' }"
+            @click="selectedZone = 'Z1'"
+          >
+            <div class="z-badge" :class="{ active: selectedZone === 'Z1' }">Z1</div>
+            <div class="z-title">1 Zona</div>
+            <div class="z-price">16,00 €</div>
           </div>
 
-          <div class="zones-total-divider"></div>
-
-          <div class="zones-total">
-            <span class="zones-total-label">Total</span>
-            <span class="zones-total-value">{{ formattedPrice }}€</span>
+          <div 
+            class="zone-card" 
+            :class="{ active: selectedZone === 'Z2' }"
+            @click="selectedZone = 'Z2'"
+          >
+            <div class="z-badge" :class="{ active: selectedZone === 'Z2' }">Z2</div>
+            <div class="z-title">Até 2 Zonas</div>
+            <div class="z-price">24,00 €</div>
+          </div>
+          
+          <div 
+            class="zone-card" 
+            :class="{ active: selectedZone === 'Z3' }"
+            @click="selectedZone = 'Z3'"
+          >
+            <div class="z-badge" :class="{ active: selectedZone === 'Z3' }">Z3</div>
+            <div class="z-title">Até 3 Zonas</div>
+            <div class="z-price">32,00 €</div>
           </div>
         </div>
       </div>
 
       <div class="step-card">
         <div class="step-header">
-          <div class="step-num active">3</div>
+          <div class="step-num active">2</div>
           <div class="step-label-group">
             <span class="step-label">Método de Pagamento</span>
             <span class="step-sublabel">Escolhe como queres pagar</span>
@@ -146,7 +95,6 @@
         </div>
 
         <div class="payment-list">
-
           <label class="pay-option" :class="{ selected: selectedMethod === 'wallet' }">
             <div class="pay-icon blue-bg">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2">
@@ -157,7 +105,7 @@
             </div>
             <div class="pay-info">
               <span class="pay-name">Saldo da Carteira</span>
-              <span class="pay-desc" :class="{ 'text-red': userBalance < price }">
+              <span class="pay-desc" :class="{ 'text-red': userBalance < finalPrice }">
                 Disponível: {{ userBalance.toFixed(2).replace('.', ',') }}€
               </span>
             </div>
@@ -183,36 +131,63 @@
             </div>
             <input type="radio" value="mbway" v-model="selectedMethod" class="sr-only"/>
           </label>
-
-          <label class="pay-option" :class="{ selected: selectedMethod === 'card' }">
-            <div class="pay-icon dark-bg">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
-                <rect x="1" y="4" width="22" height="16" rx="2"/>
-                <line x1="1" y1="10" x2="23" y2="10"/>
-              </svg>
-            </div>
-            <div class="pay-info">
-              <span class="pay-name">Cartão de Crédito / Débito</span>
-              <span class="pay-desc">Visa, Mastercard</span>
-            </div>
-            <div class="radio-outer" :class="{ active: selectedMethod === 'card' }">
-              <div class="radio-inner" v-if="selectedMethod === 'card'"></div>
-            </div>
-            <input type="radio" value="card" v-model="selectedMethod" class="sr-only"/>
-          </label>
-
         </div>
       </div>
 
-    </div><div class="bottom-action">
-      <button class="btn-confirmar" @click="confirmarCompra" :disabled="isProcessing">
-        {{ isProcessing ? 'A processar...' : `Confirmar e Pagar ${formattedPrice}€` }}
+      <div class="step-card summary-card">
+        <div class="summary-header">
+          <div class="summary-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7A3FF2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </div>
+          <h3 class="summary-title">Resumo da Compra</h3>
+        </div>
+
+        <div class="summary-content">
+          <div class="summary-row">
+            <span class="summary-label">Tipo de Pack</span>
+            <span class="summary-value">20 Bilhetes</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Zonas Abrangidas</span>
+            <span class="summary-value">{{ selectedZone }}</span>
+          </div>
+          
+          <div class="summary-divider"></div>
+          
+          <div class="summary-row">
+            <span class="summary-label">Preço Base (20x)</span>
+            <span class="summary-value">{{ formattedBasePrice }}€</span>
+          </div>
+          <div class="summary-row text-green">
+            <span class="summary-label">Desconto de Pack (20%)</span>
+            <span class="summary-value">-{{ formattedDiscountValue }}€</span>
+          </div>
+          
+          <div class="summary-divider"></div>
+          
+          <div class="summary-row final-price">
+            <span class="summary-label">Preço Final</span>
+            <span class="summary-value-large">{{ formattedFinalPrice }}€</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="bottom-action">
+      <button class="btn-confirmar blue-btn" @click="confirmarCompra" :disabled="isProcessing || !selectedZone">
+        {{ isProcessing ? 'A processar...' : `Confirmar e Pagar ${formattedFinalPrice}€` }}
       </button>
     </div>
 
     <transition name="modal-fade">
       <div v-if="paymentStatus" class="modal-overlay">
-        
         <div v-if="paymentStatus === 'success'" class="modal-card">
           <div class="modal-top success-bg">
             <div class="icon-overlap">
@@ -226,22 +201,22 @@
           
           <div class="modal-body">
             <h2>Pagamento Concluído!</h2>
-            <p>A tua compra foi processada com sucesso e o teu bilhete já está disponível.</p>
+            <p>O teu Pack de 20 Bilhetes foi adicionado à tua conta com sucesso e já o podes utilizar.</p>
             
             <div class="receipt-box">
-              <div class="receipt-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-                  <line x1="4" y1="22" x2="4" y2="15"></line>
+              <div class="receipt-icon blue-bg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7A3FF2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="16" rx="2"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
               </div>
               <div class="receipt-info">
-                <h4>Bilhete Simples</h4>
-                <span>Total: {{ formattedPrice }}€</span>
+                <h4>Pack 20 Bilhetes ({{ selectedZone }})</h4>
+                <span>Total pago: {{ formattedFinalPrice }}€</span>
               </div>
             </div>
 
-            <button class="btn-primary-modal" @click="irParaBilhetes">Ver os meus bilhetes</button>
+            <button class="btn-primary-modal blue-btn" @click="irParaBilhetes">Ver os meus bilhetes</button>
           </div>
         </div>
 
@@ -261,73 +236,83 @@
             <h2>Pagamento Recusado</h2>
             <p>Não foi possível processar a transação. Verifica o teu saldo ou tenta outro método de pagamento.</p>
             
-            <button class="btn-primary-modal" @click="fecharModal">Tentar novamente</button>
+            <button class="btn-primary-modal blue-btn" @click="fecharModal">Tentar novamente</button>
           </div>
         </div>
-
       </div>
     </transition>
 
   </div>
+
+  <button @click="showConfirmModal = true">Pagar {{ formattedFinalPrice }}€</button>
+
+  <ConfirmModal 
+    :show="showConfirmModal"
+    :summaryTitle="'Pack 10 Bilhetes (' + selectedZone + ')'"
+    :summaryPrice="formattedFinalPrice + '€'"
+    :isProcessing="isProcessing"
+    @confirm="processarPagamento"
+    @cancel="showConfirmModal = false"
+  />
+
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
+import ConfirmModal from '../components/ConfirmModal.vue'
 
-const route    = useRoute()
-const router   = useRouter()
+const router = useRouter()
 const authStore = useAuthStore()
 
-// ── Dados vindos do Search via query params ──
-const origin = computed(() => route.query.origin || 'Origem')
-const dest   = computed(() => route.query.dest   || 'Destino')
-const price  = computed(() => Number(route.query.price || 0))
+const showConfirmModal = ref(false)
 
-const zonaInicio = computed(() => Number(route.query.zonaInicio || 1))
-const zonaFim    = computed(() => Number(route.query.zonaFim    || 1))
+// ── Estado ──
+const selectedZone = ref('Z1') // Começa com Z1 pre-selecionado
+const selectedMethod = ref('wallet') // Igual ao Anual
+const isProcessing = ref(false)
+const paymentStatus = ref(null)
 
-// Zonas: "1,2,3" → [1, 2, 3]
-const zonasLista = computed(() => {
-  const raw = route.query.zonas || String(zonaInicio.value)
-  return raw.split(',').map(Number)
-})
+// Lógica de cálculo de preços (20 bilhetes com 20% desconto)
+const prices = {
+  'Z1': { base: 20.00, discount: 4.00, total: 16.00 },
+  'Z2': { base: 30.00, discount: 6.00, total: 24.00 },
+  'Z3': { base: 40.00, discount: 8.00, total: 32.00 }
+}
 
-const formattedPrice = computed(() => price.value.toFixed(2).replace('.', ','))
+const basePrice = computed(() => prices[selectedZone.value].base)
+const discountValue = computed(() => prices[selectedZone.value].discount)
+const finalPrice = computed(() => prices[selectedZone.value].total)
 
-// ── Saldo do store ──
-const userBalance = computed(() => authStore.userSaldo)
+const formattedBasePrice = computed(() => basePrice.value.toFixed(2).replace('.', ','))
+const formattedDiscountValue = computed(() => discountValue.value.toFixed(2).replace('.', ','))
+const formattedFinalPrice = computed(() => finalPrice.value.toFixed(2).replace('.', ','))
 
-// ── Estado local ──
-const selectedMethod = ref('wallet')
-const isProcessing   = ref(false)
-const paymentStatus  = ref(null) // null | 'success' | 'error'
+// Saldo do Utilizador
+const userBalance = computed(() => authStore.userSaldo || 0)
 
-// ── Confirmar compra ──
+// ── Lógica de Confirmação ──
 const confirmarCompra = () => {
   isProcessing.value = true
 
-  // Simulamos o tempo de processamento de um pagamento
   setTimeout(() => {
     isProcessing.value = false
+    showConfirmModal.value = false
     
-    // Regra de Negócio de Erro: Se usar a carteira e o saldo for insuficiente
-    if (selectedMethod.value === 'wallet' && userBalance.value < price.value) {
+    if (selectedMethod.value === 'wallet' && userBalance.value < finalPrice.value) {
       paymentStatus.value = 'error'
       return
     }
 
-    // Regra de Negócio de Sucesso: Desconta o saldo (se for wallet) e mostra sucesso
     if (selectedMethod.value === 'wallet' && authStore.user) {
-      authStore.user.saldo -= price.value
+      authStore.user.saldo -= finalPrice.value
     }
     
     paymentStatus.value = 'success'
-  }, 1200) // 1.2 segundos de "loading"
+  }, 1200)
 }
 
-// ── Ações dos Modais ──
 const fecharModal = () => {
   paymentStatus.value = null
 }
@@ -348,12 +333,15 @@ const irParaBilhetes = () => {
   box-sizing: border-box;
 }
 
-/* ── Hero Card Verde ── */
-.hero-card {
-  position: relative;
-  background: linear-gradient(135deg, #1F9D4D 0%, #23A857 58%, #34C46E 100%);
+/* ── Hero Card Roxo (Sem radius inferior) ── */
+.pack-hero {
+  background: linear-gradient(135deg, #5B2EC2 0%, #7A3FF2 60%, #9D6BFF 100%);
   padding: 52px 28px 36px 28px;
+  border-radius: 0;
+  color: #fff;
+  position: relative;
   overflow: hidden;
+  box-shadow: 0 4px 16px rgba(122, 63, 242, 0.15);
 }
 
 .back-btn {
@@ -370,6 +358,7 @@ const irParaBilhetes = () => {
   justify-content: center;
   cursor: pointer;
   z-index: 2;
+  backdrop-filter: blur(4px);
 }
 
 .hero-badge {
@@ -383,48 +372,24 @@ const irParaBilhetes = () => {
   font-weight: 700;
   color: #fff;
   letter-spacing: 0.5px;
-  margin-bottom: 20px;
-}
-
-.hero-route {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   margin-bottom: 16px;
 }
 
-.hero-city {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
+.hero-pass-info {
+  margin-bottom: 16px;
 }
 
-.hero-city.right {
-  align-items: flex-end;
-}
-
-.hero-zone-pill {
-  display: inline-block;
-  background: rgba(255,255,255,0.25);
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 11px;
+.hero-title {
+  font-size: 28px;
   font-weight: 700;
   color: #fff;
-  width: fit-content;
+  margin: 0 0 4px 0;
 }
 
-.hero-city-name {
-  font-size: 22px;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1.1;
-}
-
-.hero-arrow {
-  flex-shrink: 0;
+.hero-subtitle {
+  font-size: 14px;
+  color: rgba(255,255,255,0.85);
+  margin: 0;
 }
 
 .hero-meta {
@@ -438,21 +403,28 @@ const irParaBilhetes = () => {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: rgba(255,255,255,0.85);
+  color: rgba(255,255,255,0.9);
   font-weight: 500;
 }
 
 .hero-price {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: #fff;
+}
+
+.hero-price-strikethrough {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: line-through;
+  margin-right: 6px;
+  font-weight: 500;
 }
 
 .hero-meta-sep {
   color: rgba(255,255,255,0.5);
 }
 
-/* Decoração */
 .hero-circle-1 {
   position: absolute;
   top: -60px;
@@ -491,10 +463,6 @@ const irParaBilhetes = () => {
   box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 4px 14px rgba(16,24,40,0.06);
 }
 
-.step-card.filled {
-  border: 1.5px solid #E7F6EC;
-}
-
 .step-header {
   display: flex;
   align-items: center;
@@ -514,12 +482,8 @@ const irParaBilhetes = () => {
   flex-shrink: 0;
 }
 
-.step-num.done {
-  background: #1F9D4D;
-}
-
 .step-num.active {
-  background: #0085FF;
+  background: #7A3FF2;
   color: #fff;
 }
 
@@ -541,176 +505,70 @@ const irParaBilhetes = () => {
   color: #9AA0A6;
 }
 
-.step-change-btn {
-  font-size: 13px;
-  font-weight: 600;
-  color: #0085FF;
-  background: #EAF4FF;
-  border: none;
-  border-radius: 999px;
-  padding: 6px 12px;
+/* ── Seleção de Zonas (Grid adaptada dos Packs) ── */
+.zone-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.zone-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px 12px;
+  border: 2px solid #E4E7EB;
   cursor: pointer;
-  white-space: nowrap;
-}
-
-/* ── Route Summary (Passo 1 preenchido) ── */
-.route-summary {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  background: #F7F9FC;
-  border-radius: 14px;
-  padding: 16px;
-  gap: 8px;
-}
-
-.route-node {
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  flex: 1;
+  align-items: center;
+  text-align: center;
 }
 
-.node-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.zone-card.active {
+  border-color: #7A3FF2;
+  background: #F9F7FF;
 }
 
-.node-dot.origem {
-  background: #0085FF;
-}
-
-.node-dot.destino {
-  background: #D63A2E;
-}
-
-.node-text {
-  font-size: 15px;
-  font-weight: 700;
-  color: #15171A;
-}
-
-.node-zone {
-  font-size: 12px;
+.z-badge {
+  background: #F4F5F7;
   color: #6B7077;
-  font-weight: 500;
-}
-
-.route-connector {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 0 8px;
-}
-
-.connector-line {
-  width: 1px;
-  height: 12px;
-  background: #EDEFF2;
-}
-
-.connector-icon {
-  width: 28px;
-  height: 28px;
-  background: #EAF4FF;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
+  margin-bottom: 10px;
+  transition: all 0.2s;
 }
 
-/* ── Info Banner ── */
-.info-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: #EAF4FF;
-  border: 1px solid #C8E2FF;
-  border-radius: 14px;
-  padding: 14px 16px;
+.z-badge.active {
+  background: #7A3FF2;
+  color: #fff;
 }
 
-.info-text {
-  font-size: 13px;
-  color: #3A4658;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.info-text strong {
-  color: #0073E6;
-}
-
-/* ── Zones Breakdown ── */
-.zones-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.zone-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.zone-item-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.zone-icon-small {
-  width: 28px;
-  height: 28px;
-  background: #EAF4FF;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.zone-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #15171A;
-}
-
-.zone-cost {
-  font-size: 14px;
+.z-title {
+  font-size: 12px;
   font-weight: 600;
-  color: #3A3F45;
+  color: #6B7077;
+  margin-bottom: 4px;
 }
 
-.zones-total-divider {
-  height: 1px;
-  background: #EDEFF2;
-  margin: 4px 0;
+.zone-card.active .z-title {
+  color: #1A1A1A;
 }
 
-.zones-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.z-price {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1A1A1A;
 }
 
-.zones-total-label {
-  font-size: 15px;
-  font-weight: 700;
-  color: #15171A;
+.zone-card.active .z-price {
+  color: #7A3FF2;
 }
 
-.zones-total-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: #0085FF;
-}
-
-/* ── Payment Options ── */
+/* ── Payment Options (Igual BuyAnualPass) ── */
 .payment-list {
   display: flex;
   flex-direction: column;
@@ -729,8 +587,8 @@ const irParaBilhetes = () => {
 }
 
 .pay-option.selected {
-  border-color: #0085FF;
-  background: #F5FAFF;
+  border-color: #7A3FF2;
+  background: #F9F7FF;
 }
 
 .pay-icon {
@@ -764,7 +622,7 @@ const irParaBilhetes = () => {
   color: #6B7077;
 }
 
-.text-red { color: #D63A2E !important; }
+.text-red { color: #EF4444 !important; }
 
 .radio-outer {
   width: 20px;
@@ -779,22 +637,101 @@ const irParaBilhetes = () => {
 }
 
 .radio-outer.active {
-  border-color: #0085FF;
+  border-color: #7A3FF2;
 }
 
 .radio-inner {
   width: 10px;
   height: 10px;
-  background: #0085FF;
+  background: #7A3FF2;
   border-radius: 50%;
 }
 
 .sr-only { display: none; }
 
-/* ── Botão fixo ── */
+/* ── Summary Card (Resumo da Compra) ── */
+.summary-card {
+  margin-bottom: 24px;
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.summary-icon {
+  width: 32px;
+  height: 32px;
+  background: #F9F7FF;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summary-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #15171A;
+  margin: 0;
+}
+
+.summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summary-label {
+  font-size: 13px;
+  color: #6B7077;
+}
+
+.summary-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #15171A;
+}
+
+.summary-divider {
+  height: 1px;
+  background: #E4E7EB;
+  margin: 4px 0;
+}
+
+.text-green .summary-label, 
+.text-green .summary-value {
+  color: #1F9D4D;
+}
+
+.final-price {
+  margin-top: 4px;
+}
+
+.final-price .summary-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #15171A;
+}
+
+.summary-value-large {
+  font-size: 18px;
+  font-weight: 800;
+  color: #7A3FF2;
+}
+
+/* ── Botão fixo (Igual ao Passe Anual, levantado da Navbar) ── */
 .bottom-action {
   position: fixed;
-  bottom: 63px;
+  bottom: 80px; 
   left: 0;
   width: 100%;
   padding: 14px 16px 18px 16px;
@@ -806,16 +743,18 @@ const irParaBilhetes = () => {
 .btn-confirmar {
   width: 100%;
   height: 56px;
-  background: #0085FF;
   color: #fff;
   border: none;
   border-radius: 999px;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0,133,255,0.3);
   transition: background 0.2s, transform 0.1s;
-  letter-spacing: 0.2px;
+}
+
+.btn-confirmar.blue-btn {
+  background: #7A3FF2; /* Alterado para roxo para combinar com o pack */
+  box-shadow: 0 4px 14px rgba(122, 63, 242, 0.3);
 }
 
 .btn-confirmar:active:not(:disabled) {
@@ -823,18 +762,16 @@ const irParaBilhetes = () => {
 }
 
 .btn-confirmar:hover:not(:disabled) {
-  background: #0073E6;
+  background: #622CC2;
 }
 
 .btn-confirmar:disabled {
-  background: #A3CFFF;
+  background: #D8C3FF;
   cursor: not-allowed;
   box-shadow: none;
 }
 
-/* =========================================
-   MODAIS DE PAGAMENTO
-   ========================================= */
+/* ── Modais ── */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -931,12 +868,13 @@ const irParaBilhetes = () => {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: #EAF4FF;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
+
+.receipt-icon.blue-bg { background: #F9F7FF; }
 
 .receipt-info h4 {
   font-size: 15px;
@@ -952,8 +890,6 @@ const irParaBilhetes = () => {
 
 .btn-primary-modal {
   width: 100%;
-  background: #0085FF;
-  color: #FFFFFF;
   border: none;
   border-radius: 27px;
   height: 54px;
@@ -963,9 +899,14 @@ const irParaBilhetes = () => {
   transition: all 0.2s;
 }
 
-.btn-primary-modal:active {
+.btn-primary-modal.blue-btn {
+  background: #7A3FF2;
+  color: #FFFFFF;
+}
+
+.btn-primary-modal.blue-btn:active {
   transform: scale(0.96);
-  background: #0073E6;
+  background: #622CC2;
 }
 
 .modal-fade-enter-active, .modal-fade-leave-active {

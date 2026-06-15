@@ -91,7 +91,7 @@ const items = [
   { id: 'p1', type: 'Passes', title: 'Passe Mensal', desc: 'Acesso ilimitado durante 30 dias', icon: 'pass', color: 'green' },
   { id: 'p2', type: 'Passes', title: 'Passe Anual', desc: 'Acesso ilimitado durante 1 ano', icon: 'pass', color: 'green' },
   { id: 'pk1', type: 'Packs', title: 'Pack 10 Viagens', desc: 'Compra 10 viagens com desconto', icon: 'pack', color: 'purple' },
-  { id: 'pk2', type: 'Packs', title: 'Pack 5 Viagens', desc: 'Ideal para uso ocasional', icon: 'pack', color: 'purple' }
+  { id: 'pk2', type: 'Packs', title: 'Pack 20 Viagens', desc: 'Compra 20 viagens com desconto', icon: 'pack', color: 'purple' }
 ]
 
 // Filtra a lista com base na tab selecionada
@@ -110,8 +110,16 @@ const changeTab = (tab) => {
 
 const avancar = () => {
   if (selectedOption.value.id === 'b1') {
-    router.push('/search') // Encaminha para a pesquisa de Origem/Destino
-  } else {
+    router.push('/search') // Bilhete Simples
+  } else if (selectedOption.value.id === 'p1') {
+    router.push('/buy-monthpass') // Passe Mensal
+  } else if (selectedOption.value.id === 'p2') {
+    router.push('/buy-anualpass') // Passe Anual
+  }else if (selectedOption.value.id === 'pk1') {
+    router.push('/buy-pack10') // Pack 10 Viagens
+  }else if (selectedOption.value.id === 'pk2') {
+    router.push('/buy-pack20') // Pack 20 Viagens
+  }else {
     alert(`O fluxo para "${selectedOption.value.title}" está em construção!`)
   }
 }

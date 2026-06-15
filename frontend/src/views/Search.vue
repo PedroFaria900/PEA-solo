@@ -3,6 +3,7 @@
 
     <h1 class="titulo">Pesquisa rotas</h1>
 
+    <!-- Card de pesquisa -->
     <div class="search-card">
       <div class="search-body">
 
@@ -15,24 +16,77 @@
           </svg>
         </div>
 
-        <div class="inputs-col relative">
-          <input v-model="origem" type="text" placeholder="De onde?" class="campo-input" @input="hasSearched = false" />
+        <div class="inputs-col">
+
+          <!-- Input Origem com dropdown -->
+          <div class="input-wrapper">
+            <input
+              v-model="origemInput"
+              type="text"
+              placeholder="De onde?"
+              class="campo-input"
+              @input="onOrigemInput"
+              @blur="fecharDropdownOrigem"
+              autocomplete="off"
+            />
+            <ul v-if="sugestoesOrigem.length > 0" class="dropdown">
+              <li
+                v-for="s in sugestoesOrigem"
+                :key="s.nome"
+                class="dropdown-item"
+                @mousedown.prevent="selecionarOrigem(s)"
+              >
+                <span class="dropdown-zona-badge">Z{{ s.zona }}</span>
+                {{ s.nome }}
+              </li>
+            </ul>
+          </div>
+
           <div class="sep"></div>
-          <input v-model="destino" type="text" placeholder="Para onde?" class="campo-input" @input="hasSearched = false" />
-          
+
+          <!-- Input Destino com dropdown -->
+          <div class="input-wrapper">
+            <input
+              v-model="destinoInput"
+              type="text"
+              placeholder="Para onde?"
+              class="campo-input"
+              @input="onDestinoInput"
+              @blur="fecharDropdownDestino"
+              autocomplete="off"
+            />
+            <ul v-if="sugestoesDestino.length > 0" class="dropdown">
+              <li
+                v-for="s in sugestoesDestino"
+                :key="s.nome"
+                class="dropdown-item"
+                @mousedown.prevent="selecionarDestino(s)"
+              >
+                <span class="dropdown-zona-badge">Z{{ s.zona }}</span>
+                {{ s.nome }}
+              </li>
+            </ul>
+          </div>
+
           <button class="btn-swap" @click="trocar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 8 16 13"></polyline><line x1="21" y1="8" x2="9" y2="8"></line><polyline points="8 21 3 16 8 11"></polyline><line x1="3" y1="16" x2="15" y2="16"></line></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 3 21 8 16 13"></polyline>
+              <line x1="21" y1="8" x2="9" y2="8"></line>
+              <polyline points="8 21 3 16 8 11"></polyline>
+              <line x1="3" y1="16" x2="15" y2="16"></line>
+            </svg>
           </button>
         </div>
 
       </div>
     </div>
 
+    <!-- Chips de data -->
     <div class="chips">
-      <button 
-        v-for="data in datasDisponiveis" 
+      <button
+        v-for="data in datasDisponiveis"
         :key="data.id"
-        class="chip" 
+        class="chip"
         :class="{ active: dataSelecionada === data.id }"
         @click="dataSelecionada = data.id"
       >
@@ -40,39 +94,78 @@
       </button>
     </div>
 
+    <!-- Erro de zonas -->
+    <div v-if="erroZonas" class="erro-box">
+      {{ erroZonas }}
+    </div>
+
     <button class="btn-pesquisar" @click="handleSearch">Pesquisar</button>
 
+    <!-- Estado inicial: rotas populares -->
     <div v-if="!hasSearched" class="rotas-section fade-in">
       <h3 class="subtitulo">Rotas Populares</h3>
       <div class="rotas">
-        <div class="rota-card" v-for="rota in rotasPopulares" :key="rota.id" @click="preencherRota(rota)">
+        <div
+          class="rota-card"
+          v-for="rota in rotasPopulares"
+          :key="rota.id"
+          @click="preencherRota(rota)"
+        >
           <div class="rota-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+            <!-- ícone autocarro -->
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="5" width="20" height="14" rx="2"/>
+              <path d="M8 19v2M16 19v2M2 10h20"/>
+              <circle cx="7" cy="16" r="1" fill="currentColor"/>
+              <circle cx="17" cy="16" r="1" fill="currentColor"/>
+            </svg>
           </div>
           <div class="rota-text">
-            <span>{{ rota.origem }}</span>
-            <span class="arrow">→</span>
-            <span>{{ rota.destino }}</span>
+            <div class="rota-paragens">
+              <span>{{ rota.origem }}</span>
+              <span class="arrow">→</span>
+              <span>{{ rota.destino }}</span>
+            </div>
+            <div class="rota-meta">
+              <span class="zona-pill">Z{{ rota.zonaOrigem }}</span>
+              <span class="zona-sep">→</span>
+              <span class="zona-pill">Z{{ rota.zonaDestino }}</span>
+              <span class="rota-preco-hint">{{ formatarPreco(rota.preco) }}€</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Resultados de pesquisa -->
     <div v-else class="resultados-section fade-in">
       <div class="resultados-header">
         <h3 class="subtitulo">Resultados</h3>
         <span class="resultados-count">{{ resultadosPesquisa.length }} viagens</span>
       </div>
 
+      <!-- Resumo de zonas -->
+      <div class="zonas-info-bar">
+        <div class="zona-tag">
+          <span class="zona-pill">Z{{ zonaCalculo.zonaInicio }}</span>
+          <span class="zonas-arrow">→</span>
+          <span class="zona-pill">Z{{ zonaCalculo.zonaFim }}</span>
+        </div>
+        <div class="zonas-detalhe">
+          {{ zonaCalculo.zonasAtravessadas.length }} zona{{ zonaCalculo.zonasAtravessadas.length > 1 ? 's' : '' }}
+          · {{ formatarPreco(zonaCalculo.preco) }}€ por viagem
+        </div>
+      </div>
+
       <div class="resultados">
         <div class="resultado-card" v-for="viagem in resultadosPesquisa" :key="viagem.id">
-           
+
           <div class="resultado-top">
             <div class="time-col">
               <span class="time">{{ viagem.horaPartida }}</span>
-              <span class="city">{{ origem }}</span>
+              <span class="city">{{ origemSelecionada?.nome }}</span>
             </div>
-            
+
             <div class="duration-col">
               <span class="duration">{{ viagem.duracao }}</span>
               <div class="duration-line">
@@ -80,22 +173,33 @@
                 <span class="line"></span>
                 <span class="dot"></span>
               </div>
-              <span class="transport-type">Direto</span>
+              <span class="transport-type">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <path d="M2 10h20"/>
+                  <circle cx="7" cy="16" r="1" fill="currentColor"/>
+                  <circle cx="17" cy="16" r="1" fill="currentColor"/>
+                </svg>
+                Autocarro
+              </span>
             </div>
 
             <div class="time-col right">
               <span class="time">{{ viagem.horaChegada }}</span>
-              <span class="city">{{ destino }}</span>
+              <span class="city">{{ destinoSelecionado?.nome }}</span>
             </div>
           </div>
 
           <div class="resultado-bottom">
-            <div class="company">
-               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7077" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10"/><path d="M7 11h10"/><path d="M7 15h5"/></svg>
-               Rede Expresso
+            <div class="zonas-badges-row">
+              <span
+                v-for="z in zonaCalculo.zonasAtravessadas"
+                :key="z"
+                class="zona-badge-small"
+              >Zona {{ z }} · 1,50€</span>
             </div>
             <div class="price-action">
-              <span class="price">{{ viagem.preco.toFixed(2).replace('.', ',') }}€</span>
+              <span class="price">{{ formatarPreco(viagem.preco) }}€</span>
               <button class="buy-btn" @click="comprar(viagem)">Comprar</button>
             </div>
           </div>
@@ -104,73 +208,232 @@
       </div>
     </div>
 
-    
-
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-// Variáveis de Estado Reativas
-const origem = ref('')
-const destino = ref('')
-const dataSelecionada = ref(1)
-const hasSearched = ref(false)
+// ─────────────────────────────────────────────
+// BASE DE DADOS DE PARAGENS POR ZONA (MOCK)
+// Quando o backend existir: GET /api/paragens
+// ─────────────────────────────────────────────
+const PRECO_POR_ZONA = 1.50
 
-// Mock Data para Chips de Data
+const PARAGENS = [
+  // Zona 1
+  { nome: 'Viana do Castelo',  zona: 1 },
+  { nome: 'Barcelos',          zona: 1 },
+  { nome: 'Braga',             zona: 1 },
+  { nome: 'Guimarães',         zona: 1 },
+  { nome: 'Fafe',              zona: 1 },
+  // Zona 2
+  { nome: 'Famalicão',         zona: 2 },
+  { nome: 'Santo Tirso',       zona: 2 },
+  { nome: 'Maia',              zona: 2 },
+  { nome: 'Trofa',             zona: 2 },
+  { nome: 'Póvoa de Varzim',   zona: 2 },
+  // Zona 3
+  { nome: 'Porto',             zona: 3 },
+  { nome: 'Matosinhos',        zona: 3 },
+  { nome: 'Gondomar',          zona: 3 },
+  { nome: 'Valongo',           zona: 3 },
+  // Zona 4
+  { nome: 'Gaia',              zona: 4 },
+  { nome: 'Espinho',           zona: 4 },
+  { nome: 'Aveiro',            zona: 4 },
+]
+
+// ─────────────────────────────────────────────
+// CÁLCULO DE PREÇO POR ZONAS
+// Regra: paga 1,50€ por cada zona atravessada.
+// Zonas são contíguas (1→2→3). De Z1 a Z3 = 3 zonas = 4,50€
+// ─────────────────────────────────────────────
+function calcularPreco(paragemInicio, paragemFim) {
+  const zonaMin = Math.min(paragemInicio.zona, paragemFim.zona)
+  const zonaMax = Math.max(paragemInicio.zona, paragemFim.zona)
+
+  const zonasAtravessadas = []
+  for (let z = zonaMin; z <= zonaMax; z++) {
+    zonasAtravessadas.push(z)
+  }
+
+  return {
+    preco: zonasAtravessadas.length * PRECO_POR_ZONA,
+    zonaInicio: paragemInicio.zona,
+    zonaFim: paragemFim.zona,
+    zonasAtravessadas,
+  }
+}
+
+function formatarPreco(valor) {
+  return valor.toFixed(2).replace('.', ',')
+}
+
+// ─────────────────────────────────────────────
+// ESTADO
+// ─────────────────────────────────────────────
+const origemInput    = ref('')
+const destinoInput   = ref('')
+const origemSelecionada  = ref(null)   // objecto { nome, zona }
+const destinoSelecionado = ref(null)   // objecto { nome, zona }
+const sugestoesOrigem  = ref([])
+const sugestoesDestino = ref([])
+const dataSelecionada  = ref(1)
+const hasSearched      = ref(false)
+const erroZonas        = ref('')
+const resultadosPesquisa = ref([])
+const zonaCalculo      = ref({ preco: 0, zonaInicio: 1, zonaFim: 1, zonasAtravessadas: [1] })
+
 const datasDisponiveis = ref([
   { id: 1, label: 'Hoje' },
   { id: 2, label: 'Amanhã' },
-  { id: 3, label: '14 Jun' },
-  { id: 4, label: '15 Jun' }
+  { id: 3, label: '15 Jun' },
+  { id: 4, label: '16 Jun' },
 ])
 
-// Mock Data para Rotas Populares
-const rotasPopulares = ref([
-  { id: 1, origem: 'Viana', destino: 'Alameda' },
-  { id: 2, origem: 'Braga', destino: 'Porto' },
-  { id: 3, origem: 'Guimarães', destino: 'Vila Real' }
-])
+// Rotas populares com preco já calculado
+const rotasPopulares = computed(() => {
+  const pares = [
+    { origem: 'Braga',     destino: 'Porto' },
+    { origem: 'Guimarães', destino: 'Matosinhos' },
+    { origem: 'Barcelos',  destino: 'Gaia' },
+  ]
+  return pares.map((r, i) => {
+    const pInicio = PARAGENS.find(p => p.nome === r.origem)
+    const pFim    = PARAGENS.find(p => p.nome === r.destino)
+    const calc    = calcularPreco(pInicio, pFim)
+    return {
+      id: i + 1,
+      origem: r.origem,
+      destino: r.destino,
+      zonaOrigem: pInicio.zona,
+      zonaDestino: pFim.zona,
+      preco: calc.preco,
+    }
+  })
+})
 
-const resultadosPesquisa = ref([])
+// ─────────────────────────────────────────────
+// AUTOCOMPLETE
+// ─────────────────────────────────────────────
+function filtrarParagens(texto) {
+  if (!texto || texto.length < 2) return []
+  const q = texto.toLowerCase()
+  return PARAGENS.filter(p => p.nome.toLowerCase().includes(q)).slice(0, 5)
+}
 
-// Funções Lógicas
+function onOrigemInput() {
+  erroZonas.value = ''
+  origemSelecionada.value = null
+  hasSearched.value = false
+  sugestoesOrigem.value = filtrarParagens(origemInput.value)
+}
+
+function onDestinoInput() {
+  erroZonas.value = ''
+  destinoSelecionado.value = null
+  hasSearched.value = false
+  sugestoesDestino.value = filtrarParagens(destinoInput.value)
+}
+
+function selecionarOrigem(paragem) {
+  origemSelecionada.value = paragem
+  origemInput.value = paragem.nome
+  sugestoesOrigem.value = []
+}
+
+function selecionarDestino(paragem) {
+  destinoSelecionado.value = paragem
+  destinoInput.value = paragem.nome
+  sugestoesDestino.value = []
+}
+
+function fecharDropdownOrigem()  { setTimeout(() => { sugestoesOrigem.value  = [] }, 150) }
+function fecharDropdownDestino() { setTimeout(() => { sugestoesDestino.value = [] }, 150) }
+
+// ─────────────────────────────────────────────
+// LÓGICA
+// ─────────────────────────────────────────────
 const trocar = () => {
-  const temp = origem.value
-  origem.value = destino.value
-  destino.value = temp
-  hasSearched.value = false // reseta a pesquisa ao trocar
+  // Troca os objectos e os textos
+  const tmpObj   = origemSelecionada.value
+  const tmpInput = origemInput.value
+  origemSelecionada.value  = destinoSelecionado.value
+  origemInput.value        = destinoInput.value
+  destinoSelecionado.value = tmpObj
+  destinoInput.value       = tmpInput
+  hasSearched.value = false
 }
 
 const preencherRota = (rota) => {
-  origem.value = rota.origem
-  destino.value = rota.destino
-  handleSearch() // Pesquisa imediatamente
+  const pOrigem  = PARAGENS.find(p => p.nome === rota.origem)
+  const pDestino = PARAGENS.find(p => p.nome === rota.destino)
+  origemSelecionada.value  = pOrigem
+  destinoSelecionado.value = pDestino
+  origemInput.value  = pOrigem.nome
+  destinoInput.value = pDestino.nome
+  handleSearch()
 }
 
 const handleSearch = () => {
-  if (!origem.value || !destino.value) {
-    alert('Preenche a origem e o destino primeiro!')
+  erroZonas.value = ''
+
+  // Validação — tem de ter seleccionado uma paragem válida do dropdown
+  if (!origemSelecionada.value) {
+    erroZonas.value = 'Seleciona a origem na lista de sugestões.'
     return
   }
-  
-  // Simulação de pesquisa ao Backend (Gera horários falsos para a origem/destino escolhidos)
+  if (!destinoSelecionado.value) {
+    erroZonas.value = 'Seleciona o destino na lista de sugestões.'
+    return
+  }
+  if (origemSelecionada.value.nome === destinoSelecionado.value.nome) {
+    erroZonas.value = 'A origem e o destino não podem ser iguais.'
+    return
+  }
+
+  // Calcular preço com base nas zonas
+  const calc = calcularPreco(origemSelecionada.value, destinoSelecionado.value)
+  zonaCalculo.value = calc
+
+  // Gerar horários (mock) — preço é REAL calculado por zonas
+  // Quando ligar ao backend: GET /api/rotas?origem=...&destino=...&data=...
   resultadosPesquisa.value = [
-    { id: 1, horaPartida: '09:00', horaChegada: '10:15', duracao: '1h 15m', preco: 4.50 },
-    { id: 2, horaPartida: '11:30', horaChegada: '12:50', duracao: '1h 20m', preco: 5.00 },
-    { id: 3, horaPartida: '16:00', horaChegada: '17:10', duracao: '1h 10m', preco: 4.00 }
+    { id: 1, horaPartida: '08:45', horaChegada: calcularChegada('08:45', 55), duracao: '55 min', preco: calc.preco },
+    { id: 2, horaPartida: '10:20', horaChegada: calcularChegada('10:20', 55), duracao: '55 min', preco: calc.preco },
+    { id: 3, horaPartida: '13:00', horaChegada: calcularChegada('13:00', 55), duracao: '55 min', preco: calc.preco },
+    { id: 4, horaPartida: '16:30', horaChegada: calcularChegada('16:30', 55), duracao: '55 min', preco: calc.preco },
   ]
-  
+
   hasSearched.value = true
 }
 
+// Utilitário para calcular hora de chegada
+function calcularChegada(horaPartida, minutos) {
+  const [h, m] = horaPartida.split(':').map(Number)
+  const total  = h * 60 + m + minutos
+  const hh     = String(Math.floor(total / 60) % 24).padStart(2, '0')
+  const mm     = String(total % 60).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
 const comprar = (viagem) => {
-  // Passamos os dados do bilhete para o router (para a página de Buy)
-  router.push({ name: 'Buy', query: { origin: origem.value, dest: destino.value, price: viagem.preco } })
+  router.push({
+    name: 'Buy',
+    query: {
+      origin:     origemSelecionada.value.nome,
+      dest:       destinoSelecionado.value.nome,
+      price:      viagem.preco,
+      zonaInicio: zonaCalculo.value.zonaInicio,
+      zonaFim:    zonaCalculo.value.zonaFim,
+      // Envia as zonas separadas por vírgula para o Buy poder listar
+      zonas:      zonaCalculo.value.zonasAtravessadas.join(','),
+    }
+  })
 }
 </script>
 
@@ -191,7 +454,7 @@ const comprar = (viagem) => {
   letter-spacing: -0.4px;
 }
 
-/* Card Principal da Pesquisa */
+/* ── Search Card ── */
 .search-card {
   background: white;
   border: 1px solid #E4E7EB;
@@ -210,7 +473,8 @@ const comprar = (viagem) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 14px;
+  margin-top: 16px;
+  flex-shrink: 0;
 }
 
 .dot-origem {
@@ -223,7 +487,7 @@ const comprar = (viagem) => {
 
 .conector {
   width: 2px;
-  height: 24px;
+  height: 28px;
   background: #EDEFF2;
   margin: 4px 0;
 }
@@ -235,15 +499,21 @@ const comprar = (viagem) => {
   position: relative;
 }
 
+/* Wrapper para cada input (necessário para o dropdown) */
+.input-wrapper {
+  position: relative;
+}
+
 .campo-input {
   border: none;
   font-size: 16px;
   font-weight: 500;
   color: #15171A;
-  padding: 12px 0;
-  width: 90%;
+  padding: 12px 40px 12px 0;
+  width: 100%;
   outline: none;
   background: transparent;
+  box-sizing: border-box;
 }
 
 .campo-input::placeholder {
@@ -257,6 +527,48 @@ const comprar = (viagem) => {
   width: 100%;
 }
 
+/* Dropdown de sugestões */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: -16px;
+  right: -56px;
+  background: white;
+  border: 1px solid #E4E7EB;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(16,24,40,0.12);
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #15171A;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dropdown-item:hover { background: #F5F8FF; }
+
+.dropdown-zona-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0085FF;
+  background: #EAF4FF;
+  border-radius: 6px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+/* Botão swap */
 .btn-swap {
   position: absolute;
   right: 0;
@@ -272,16 +584,16 @@ const comprar = (viagem) => {
   justify-content: center;
   cursor: pointer;
   transition: background 0.2s;
+  z-index: 1;
 }
-
 .btn-swap:hover { background: #E4E7EB; }
 
-/* Chips */
+/* ── Chips de data ── */
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .chip {
@@ -295,13 +607,25 @@ const comprar = (viagem) => {
   cursor: pointer;
   transition: all 0.2s;
 }
-
 .chip.active {
   background: #0085FF;
   color: white;
   border-color: #0085FF;
 }
 
+/* ── Erro ── */
+.erro-box {
+  background: #FFF2F2;
+  border: 1px solid #FFCDD2;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #D63A2E;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+/* ── Botão Pesquisar ── */
 .btn-pesquisar {
   width: 100%;
   background: #0085FF;
@@ -317,6 +641,7 @@ const comprar = (viagem) => {
 }
 .btn-pesquisar:hover { background: #0073E6; }
 
+/* ── Subtítulo ── */
 .subtitulo {
   font-weight: 700;
   font-size: 20px;
@@ -324,7 +649,7 @@ const comprar = (viagem) => {
   margin: 0 0 16px 0;
 }
 
-/* Rotas Populares */
+/* ── Rotas Populares ── */
 .rotas {
   display: flex;
   flex-direction: column;
@@ -337,41 +662,72 @@ const comprar = (viagem) => {
   background: white;
   border: 1px solid #E4E7EB;
   border-radius: 16px;
-  padding: 12px 16px;
+  padding: 14px 16px;
   cursor: pointer;
   transition: box-shadow 0.2s;
+  gap: 12px;
 }
-.rota-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+.rota-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.07); }
 
 .rota-icon {
-  width: 32px;
-  height: 32px;
-  background: #F2F4F7;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  background: #EAF4FF;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 12px;
-  color: #6B7077;
+  color: #0085FF;
+  flex-shrink: 0;
 }
 
 .rota-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rota-paragens {
   font-weight: 600;
   font-size: 15px;
   color: #15171A;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.rota-text .arrow { color: #6B7077; }
+.rota-paragens .arrow { color: #6B7077; font-size: 13px; }
 
-/* Resultados de Pesquisa */
+.rota-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zona-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0085FF;
+  background: #EAF4FF;
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+
+.zona-sep { font-size: 11px; color: #9AA0A6; }
+
+.rota-preco-hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7077;
+  margin-left: 4px;
+}
+
+/* ── Resultados ── */
 .resultados-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .resultados-count {
@@ -381,6 +737,32 @@ const comprar = (viagem) => {
   background: #EAF4FF;
   padding: 6px 12px;
   border-radius: 999px;
+}
+
+/* Barra de resumo de zonas */
+.zonas-info-bar {
+  background: #F5F8FF;
+  border: 1px solid #D5E8FF;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.zona-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zonas-arrow { font-size: 13px; color: #9AA0A6; }
+
+.zonas-detalhe {
+  font-size: 13px;
+  color: #6B7077;
+  font-weight: 500;
 }
 
 .resultados {
@@ -397,6 +779,7 @@ const comprar = (viagem) => {
   box-shadow: 0 2px 8px rgba(16,24,40,0.04);
 }
 
+/* Topo do card */
 .resultado-top {
   display: flex;
   justify-content: space-between;
@@ -406,7 +789,7 @@ const comprar = (viagem) => {
 
 .time-col { display: flex; flex-direction: column; }
 .time-col.right { text-align: right; }
-.time-col .time { font-size: 22px; font-weight: 700; color: #15171A; }
+.time-col .time { font-size: 22px; font-weight: 700; color: #15171A; font-variant-numeric: tabular-nums; }
 .time-col .city { font-size: 13px; color: #6B7077; font-weight: 500; margin-top: 2px; }
 
 .duration-col {
@@ -414,10 +797,10 @@ const comprar = (viagem) => {
   flex-direction: column;
   align-items: center;
   flex-grow: 1;
-  padding: 0 20px;
+  padding: 0 16px;
 }
-
 .duration-col .duration { font-size: 12px; color: #6B7077; margin-bottom: 4px; }
+
 .duration-line {
   display: flex;
   align-items: center;
@@ -427,67 +810,71 @@ const comprar = (viagem) => {
   width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid #0085FF; background: white;
 }
 .duration-line .line { flex-grow: 1; height: 2px; background: #EAF4FF; }
-.duration-col .transport-type { font-size: 11px; color: #0085FF; margin-top: 4px; font-weight: 600; }
 
+.transport-type {
+  font-size: 11px;
+  color: #0085FF;
+  margin-top: 4px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Fundo do card */
 .resultado-bottom {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 16px;
+  padding-top: 14px;
   border-top: 1px solid #EDEFF2;
+  gap: 12px;
 }
 
-.company {
+.zonas-badges-row {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6B7077;
+  flex: 1;
+}
+
+.zona-badge-small {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1F9D4D;
+  background: #E7F6EC;
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
 }
 
 .price-action {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .price-action .price { font-size: 18px; font-weight: 700; color: #15171A; }
+
 .buy-btn {
   background: #0085FF;
   color: white;
   border: none;
   border-radius: 999px;
-  padding: 8px 18px;
+  padding: 9px 20px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
+  white-space: nowrap;
 }
 .buy-btn:hover { background: #0073E6; }
 
-/* Animações */
+/* ── Animação ── */
 .fade-in { animation: fadeIn 0.3s ease-in-out; }
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
-/* NavBar Inferior Global */
-.bottom-navbar {
-  position: fixed; bottom: 0; left: 0; width: 100%; height: 63px;
-  background: #FFFFFF; box-shadow: 0px -4px 20px rgba(0, 0, 0, 0.05);
-  display: flex; justify-content: space-around; align-items: center;
-  padding: 0 10px; box-sizing: border-box;
-}
-
-.nav-item {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  width: 86.5px; height: 51px; border-radius: 4px; color: #15171A;
-  font-weight: 500; font-size: 10px; cursor: pointer; transition: all 0.2s;
-}
-
-.nav-item svg { width: 24px; height: 24px; margin-bottom: 4px; }
-.nav-item.active { background: #0085FF; color: #FFFFFF; }
-.nav-item.active svg { stroke: #FFFFFF; }
 </style>
