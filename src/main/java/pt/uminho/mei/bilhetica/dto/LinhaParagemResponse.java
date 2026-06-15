@@ -11,11 +11,7 @@ import java.util.UUID;
 public class LinhaParagemResponse {
     private UUID paragemId;
     private String paragemNome;
-    private String paragemCodigo;
-    private Double latitude;
-    private Double longitude;
     private SentidoLinha sentido;
     private Integer sequencia;
-    private Integer distanciaMetros;
     private Integer tempoEstimadoSeg;
 }

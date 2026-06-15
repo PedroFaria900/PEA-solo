@@ -1,0 +1,28 @@
+info:
+  name: search-routes
+  type: http
+  seq: 7
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/rotas/pesquisar?origemId={{origemId}}&destinoId={{destinoId}}"
+  # Pesquisa multi-transbordo (≤2 transbordos) com recomendação de PASSE/PACK/BILHETE.
+  # Requer autenticação (usa o perfil do utente para preços com desconto correcto).
+  # Descobrir IDs: GET /api/linhas → GET /api/linhas/{id}/paragens → copiar paragemId.
+  # Na recomendação: zonasIds:[] significa "Rede completa" (passe-tudo, toda a rede).
+  # Para comprar o título recomendado: POST /api/titulos com tipo + zonasIds + (viagens para PACK).
+
+  params:
+    query:
+      - name: origemId
+        value: "{{origemId}}"
+      - name: destinoId
+        value: "{{destinoId}}"
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

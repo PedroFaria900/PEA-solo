@@ -12,6 +12,4 @@ public class ParagemResponse {
     private String nome;
     private String codigo;
     private String municipio;
-    private Double latitude;
-    private Double longitude;
 }

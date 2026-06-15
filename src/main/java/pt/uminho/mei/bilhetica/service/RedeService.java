@@ -48,8 +48,6 @@ public class RedeService {
             .nome(p.getNome())
             .codigo(p.getCodigo())
             .municipio(p.getMunicipio())
-            .latitude(p.getLatitude())
-            .longitude(p.getLongitude())
             .build();
     }
 
@@ -63,12 +61,8 @@ public class RedeService {
             .map(lp -> LinhaParagemResponse.builder()
                 .paragemId(lp.getParagem().getId())
                 .paragemNome(lp.getParagem().getNome())
-                .paragemCodigo(lp.getParagem().getCodigo())
-                .latitude(lp.getParagem().getLatitude())
-                .longitude(lp.getParagem().getLongitude())
                 .sentido(lp.getId().getSentido())
                 .sequencia(lp.getSequencia())
-                .distanciaMetros(lp.getDistanciaMetros())
                 .tempoEstimadoSeg(lp.getTempoEstimadoSeg())
                 .build())
             .collect(Collectors.toList());
@@ -112,15 +106,11 @@ public class RedeService {
                         .id(origem.getId())
                         .nome(origem.getNome())
                         .codigo(origem.getCodigo())
-                        .latitude(origem.getLatitude())
-                        .longitude(origem.getLongitude())
                         .build())
                     .paragemSaida(ParagemResponse.builder()
                         .id(destino.getId())
                         .nome(destino.getNome())
                         .codigo(destino.getCodigo())
-                        .latitude(destino.getLatitude())
-                        .longitude(destino.getLongitude())
                         .build())
                     .tempoEstimadoSeg(tempo)
                     .numerParagens(idxDestino - idxOrigem)

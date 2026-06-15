@@ -1,11 +1,14 @@
 package pt.uminho.mei.bilhetica.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import pt.uminho.mei.bilhetica.dto.*;
 import pt.uminho.mei.bilhetica.enums.SentidoLinha;
 import pt.uminho.mei.bilhetica.enums.TipoTransporte;
 import pt.uminho.mei.bilhetica.service.RedeService;
+import pt.uminho.mei.bilhetica.service.RotaService;
 
 import java.util.List;
 import java.util.UUID;
@@ -15,9 +18,11 @@ import java.util.UUID;
 public class RedeController {
 
     private final RedeService redeService;
+    private final RotaService rotaService;
 
-    public RedeController(RedeService redeService) {
+    public RedeController(RedeService redeService, RotaService rotaService) {
         this.redeService = redeService;
+        this.rotaService = rotaService;
     }
 
     @GetMapping("/linhas")
@@ -44,6 +49,15 @@ public class RedeController {
             @RequestParam UUID origemId,
             @RequestParam UUID destinoId) {
         return ResponseEntity.ok(redeService.sugerirRota(origemId, destinoId));
+    }
+
+    /** Pesquisa multi-transbordo com recomendação de títulos. Requer autenticação. */
+    @GetMapping("/rotas/pesquisar")
+    public ResponseEntity<List<RotaPesquisaResponse>> pesquisarRota(
+            @RequestParam UUID origemId,
+            @RequestParam UUID destinoId,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(rotaService.pesquisar(origemId, destinoId, user.getUsername()));
     }
 
 }

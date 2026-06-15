@@ -3,6 +3,7 @@ package pt.uminho.mei.bilhetica.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import pt.uminho.mei.bilhetica.enums.PerfilUtente;
+import pt.uminho.mei.bilhetica.enums.PeriodoPasse;
 import pt.uminho.mei.bilhetica.enums.TipoTitulo;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -30,6 +31,11 @@ public class Tarifario {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "zona_id")
     private ZonaTarifaria zona;
+
+    /** Período do passe (MENSAL/ANUAL). NULL para PACK e BILHETE. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "periodo")
+    private PeriodoPasse periodo;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal preco;

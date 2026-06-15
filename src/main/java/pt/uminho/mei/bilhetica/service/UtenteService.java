@@ -28,10 +28,13 @@ public class UtenteService implements UserDetailsService {
             .orElseThrow(() -> new UsernameNotFoundException(
                 "Utente não encontrado: " + email));
 
+        String[] roles = utente.isAdmin()
+                ? new String[]{"UTENTE", "ADMIN"}
+                : new String[]{"UTENTE"};
         return User.builder()
                 .username(utente.getEmail())
                 .password(utente.getPasswordHash())
-                .roles("UTENTE")
+                .roles(roles)
                 .build();
     }
 

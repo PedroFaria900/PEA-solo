@@ -83,6 +83,7 @@ public class TituloService {
             .tipo(t.tipo().name())
             .estado(t.getEstado())
             .viagensRestantes(t.viagensRestantesResponse())
+            .periodo(t.periodoResponse())
             .areaGeografica(t.areaGeografica())
             .expiraEm(t.expiraEm())
             .build();

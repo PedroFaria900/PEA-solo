@@ -23,10 +23,4 @@ public class Paragem {
     private String codigo;
 
     private String municipio;
-    
-    @Column(nullable = false)
-    private Double latitude;
-
-    @Column(nullable = false)
-    private Double longitude;
 }

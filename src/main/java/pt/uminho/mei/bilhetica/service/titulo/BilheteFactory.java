@@ -26,8 +26,8 @@ public class BilheteFactory implements TituloFactory {
 
     @Override
     public BigDecimal calcularPreco(ComprarTituloRequest req, Utente utente) {
-        // Lista vazia → tarifário global (bilhete sem restrição de zona).
-        return calc.precoBase(TipoTitulo.BILHETE, utente.getPerfil(), req.getZonasIds());
+        // Lista vazia → tarifário global (bilhete sem restrição de zona). Sem período (null).
+        return calc.precoBase(TipoTitulo.BILHETE, utente.getPerfil(), req.getZonasIds(), null);
     }
 
     @Override

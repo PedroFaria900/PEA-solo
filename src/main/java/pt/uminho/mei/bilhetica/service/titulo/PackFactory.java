@@ -7,6 +7,7 @@ import pt.uminho.mei.bilhetica.entity.titulo.TituloPack;
 import pt.uminho.mei.bilhetica.entity.titulo.TituloTransporte;
 import pt.uminho.mei.bilhetica.enums.EstadoTitulo;
 import pt.uminho.mei.bilhetica.enums.TipoTitulo;
+import pt.uminho.mei.bilhetica.service.PackTierService;
 
 import java.math.BigDecimal;
 
@@ -14,9 +15,11 @@ import java.math.BigDecimal;
 public class PackFactory implements TituloFactory {
 
     private final CalculadoraTarifa calc;
+    private final PackTierService packTierService;
 
-    public PackFactory(CalculadoraTarifa calc) {
+    public PackFactory(CalculadoraTarifa calc, PackTierService packTierService) {
         this.calc = calc;
+        this.packTierService = packTierService;
     }
 
     @Override
@@ -29,7 +32,11 @@ public class PackFactory implements TituloFactory {
         if (req.getViagens() == null || req.getViagens() <= 0) {
             throw new RuntimeException("Deve especificar o número de viagens do pack");
         }
-        return calc.precoBase(TipoTitulo.PACK, utente.getPerfil(), req.getZonasIds())
+        if (!packTierService.listar().contains(req.getViagens())) {
+            throw new RuntimeException(
+                "Número de viagens inválido. Tiers disponíveis: " + packTierService.listar());
+        }
+        return calc.precoBase(TipoTitulo.PACK, utente.getPerfil(), req.getZonasIds(), null)
             .multiply(BigDecimal.valueOf(req.getViagens()));
     }
 

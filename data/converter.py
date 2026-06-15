@@ -14,8 +14,8 @@ Decisões de modelação (ver plano):
   - As viagens são atribuídas aos utentes por uma distribuição ENVIESADA
     (lei de potência / Zipf) → poucos utentes intensivos, cauda longa; mais
     realista para as queries analíticas (UC3) sem custo de escrita.
-  - Cada utente possui um PASSE Rede Completa (validações ilimitadas → carga
-    de escrita estável e sem estado histórico a reconciliar); uma fracção
+  - Cada utente possui um PASSE passe-tudo (zonasIds vazio → validações ilimitadas
+    em toda a rede, sem estado histórico a reconciliar); uma fracção
     possui também PACK/BILHETE para cobrir os caminhos de escrita.
   - As validações/viagens HISTÓRICAS ligam-se apenas aos PASSES.
 
@@ -62,23 +62,24 @@ print(f"Config: SEED_ROWS={SEED_ROWS}, NUM_UTENTES={NUM_UTENTES}, "
 # Tabelas em ordem de dependência (pais → filhos). Usada no TRUNCATE e no \copy.
 TABLES = [
     'paragem', 'linha', 'linha_paragem', 'zona_tarifaria',
-    'zona_tarifaria_paragem', 'tarifario', 'leitor', 'utente',
+    'zona_tarifaria_paragem', 'tarifario', 'pack_tier', 'leitor', 'utente',
     'titulo_transporte', 'titulo_zona', 'transacao',
     'validacao', 'viagem',
 ]
 
 # Lista explícita de colunas por tabela (alinhada com as entidades JPA).
 COLUMNS = {
-    'paragem': ['id', 'nome', 'codigo', 'latitude', 'longitude', 'municipio'],
+    'paragem': ['id', 'nome', 'codigo', 'municipio'],
     'linha': ['id', 'designacao', 'tipo_transporte'],
     'linha_paragem': ['linha_id', 'paragem_id', 'sentido', 'sequencia', 'tempo_estimado_seg'],
     'zona_tarifaria': ['id', 'nome', 'descricao'],
     'zona_tarifaria_paragem': ['zona_id', 'paragem_id'],
-    'tarifario': ['id', 'tipo_titulo', 'perfil_utente', 'zona_id', 'preco'],
+    'tarifario': ['id', 'tipo_titulo', 'perfil_utente', 'zona_id', 'periodo', 'preco'],
+    'pack_tier': ['id', 'viagens'],
     'leitor': ['id', 'codigo', 'linha_id', 'estado'],
-    'utente': ['id', 'nome', 'email', 'telemovel', 'password_hash', 'saldo', 'perfil', 'version'],
+    'utente': ['id', 'nome', 'email', 'telemovel', 'password_hash', 'saldo', 'perfil', 'admin', 'version'],
     'titulo_transporte': ['id', 'utente_id', 'estado', 'tipo_titulo', 'version',
-                          'validade', 'viagens_restantes', 'ativado_em'],
+                          'validade', 'viagens_restantes', 'ativado_em', 'periodo'],
     'titulo_zona': ['titulo_id', 'zona_id'],
     'transacao': ['id', 'utente_id', 'valor', 'tipo', 'momento', 'descricao'],
     'validacao': ['id', 'titulo_id', 'leitor_id', 'momento', 'resultado'],
@@ -117,9 +118,7 @@ stop_id_map = {}  # BUS_STOP -> uuid
 for _, row in stops_df.iterrows():
     sid = str(uuid.uuid4())
     stop_id_map[row['BUS_STOP']] = sid
-    lat = round(41.45 + random.uniform(0, 0.15), 6)
-    lon = round(-8.50 + random.uniform(0, 0.15), 6)
-    w['paragem'].writerow([sid, row['BUS_STOP'], row['BUS_STOP'], lat, lon, 'CityX'])
+    w['paragem'].writerow([sid, row['BUS_STOP'], row['BUS_STOP'], 'CityX'])
 print(f"Paragens: {len(stop_id_map)}")
 
 # ── LINHAS E LINHA_PARAGEM ──────────────────────────────────────────────────
@@ -140,63 +139,70 @@ for route_code, df in routes.items():
 print(f"Linhas: {len(route_id_map)}")
 
 # ── ZONAS TARIFARIAS ────────────────────────────────────────────────────────
-zona_rede_id = str(uuid.uuid4())
+# Apenas duas zonas geográficas. Cobertura total (passe-tudo) = zonasIds vazio;
+# o tarifário global (zona IS NULL) cobre esse caso sem necessitar de zona própria.
 zona_a_id = str(uuid.uuid4())
 zona_b_id = str(uuid.uuid4())
-w['zona_tarifaria'].writerow([zona_rede_id, 'Rede Completa', 'Toda a rede de transportes'])
 w['zona_tarifaria'].writerow([zona_a_id, 'Zona A', 'Centro da cidade'])
 w['zona_tarifaria'].writerow([zona_b_id, 'Zona B', 'Periferia'])
 for pid in stop_id_map.values():
-    w['zona_tarifaria_paragem'].writerow([zona_rede_id, pid])
     w['zona_tarifaria_paragem'].writerow([zona_a_id if random.random() < 0.5 else zona_b_id, pid])
 
 # ── TARIFARIO ───────────────────────────────────────────────────────────────
-# Linha global (zona IS NULL): qualquer tipo com zonasIds=[] usa este preço.
+# Linha global (zona IS NULL): zonasIds=[] → "Rede completa" (passe-tudo, toda a rede).
 # Linhas por zona: compras interzona somam as linhas de cada zona pedida.
-# Rede Completa (zona_rede_id): mantida para seeded titles (PASSE rede completa).
+# Tuplos: (tipo, perfil, zona, periodo, preco)
+# PASSE tem periodo MENSAL e ANUAL (linhas separadas); PACK e BILHETE têm periodo=None.
+# Anual ≈ mensal × 10 (2 meses grátis como desconto de fidelização).
 tarifas = [
-    # --- PASSE ---
-    ('PASSE', 'NORMAL',    zona_rede_id, 40.00),
-    ('PASSE', 'ESTUDANTE', zona_rede_id, 20.00),
-    ('PASSE', 'SENIOR',    zona_rede_id, 20.00),
-    ('PASSE', 'NORMAL',    None,         40.00),   # global (passe-tudo)
-    ('PASSE', 'ESTUDANTE', None,         20.00),
-    ('PASSE', 'SENIOR',    None,         20.00),
-    ('PASSE', 'NORMAL',    zona_a_id,    25.00),   # zona A
-    ('PASSE', 'ESTUDANTE', zona_a_id,    13.00),
-    ('PASSE', 'SENIOR',    zona_a_id,    13.00),
-    ('PASSE', 'NORMAL',    zona_b_id,    25.00),   # zona B
-    ('PASSE', 'ESTUDANTE', zona_b_id,    13.00),
-    ('PASSE', 'SENIOR',    zona_b_id,    13.00),
-    # --- PACK (preço por viagem) ---
-    ('PACK', 'NORMAL',    None,         1.30),     # global
-    ('PACK', 'ESTUDANTE', None,         1.00),
-    ('PACK', 'SENIOR',    None,         1.00),
-    ('PACK', 'NORMAL',    zona_rede_id, 1.30),     # rede completa
-    ('PACK', 'ESTUDANTE', zona_rede_id, 1.00),
-    ('PACK', 'SENIOR',    zona_rede_id, 1.00),
-    ('PACK', 'NORMAL',    zona_a_id,    0.90),     # zona A
-    ('PACK', 'ESTUDANTE', zona_a_id,    0.70),
-    ('PACK', 'SENIOR',    zona_a_id,    0.70),
-    ('PACK', 'NORMAL',    zona_b_id,    0.90),     # zona B
-    ('PACK', 'ESTUDANTE', zona_b_id,    0.70),
-    ('PACK', 'SENIOR',    zona_b_id,    0.70),
-    # --- BILHETE ---
-    ('BILHETE', 'NORMAL',    None,         1.50),  # global
-    ('BILHETE', 'ESTUDANTE', None,         1.20),
-    ('BILHETE', 'SENIOR',    None,         1.20),
-    ('BILHETE', 'NORMAL',    zona_rede_id, 1.50),  # rede completa
-    ('BILHETE', 'ESTUDANTE', zona_rede_id, 1.20),
-    ('BILHETE', 'SENIOR',    zona_rede_id, 1.20),
-    ('BILHETE', 'NORMAL',    zona_a_id,    1.00),  # zona A
-    ('BILHETE', 'ESTUDANTE', zona_a_id,    0.85),
-    ('BILHETE', 'SENIOR',    zona_a_id,    0.85),
-    ('BILHETE', 'NORMAL',    zona_b_id,    1.00),  # zona B
-    ('BILHETE', 'ESTUDANTE', zona_b_id,    0.85),
-    ('BILHETE', 'SENIOR',    zona_b_id,    0.85),
+    # --- PASSE MENSAL ---
+    ('PASSE', 'NORMAL',    None,      'MENSAL', 40.00),   # global / Rede completa
+    ('PASSE', 'ESTUDANTE', None,      'MENSAL', 20.00),
+    ('PASSE', 'SENIOR',    None,      'MENSAL', 20.00),
+    ('PASSE', 'NORMAL',    zona_a_id, 'MENSAL', 25.00),   # zona A
+    ('PASSE', 'ESTUDANTE', zona_a_id, 'MENSAL', 13.00),
+    ('PASSE', 'SENIOR',    zona_a_id, 'MENSAL', 13.00),
+    ('PASSE', 'NORMAL',    zona_b_id, 'MENSAL', 25.00),   # zona B
+    ('PASSE', 'ESTUDANTE', zona_b_id, 'MENSAL', 13.00),
+    ('PASSE', 'SENIOR',    zona_b_id, 'MENSAL', 13.00),
+    # --- PASSE ANUAL (×10 = 2 meses grátis) ---
+    ('PASSE', 'NORMAL',    None,      'ANUAL', 400.00),
+    ('PASSE', 'ESTUDANTE', None,      'ANUAL', 200.00),
+    ('PASSE', 'SENIOR',    None,      'ANUAL', 200.00),
+    ('PASSE', 'NORMAL',    zona_a_id, 'ANUAL', 250.00),
+    ('PASSE', 'ESTUDANTE', zona_a_id, 'ANUAL', 130.00),
+    ('PASSE', 'SENIOR',    zona_a_id, 'ANUAL', 130.00),
+    ('PASSE', 'NORMAL',    zona_b_id, 'ANUAL', 250.00),
+    ('PASSE', 'ESTUDANTE', zona_b_id, 'ANUAL', 130.00),
+    ('PASSE', 'SENIOR',    zona_b_id, 'ANUAL', 130.00),
+    # --- PACK (preço por viagem; sem período) ---
+    ('PACK', 'NORMAL',    None,      None, 1.30),          # global / Rede completa
+    ('PACK', 'ESTUDANTE', None,      None, 1.00),
+    ('PACK', 'SENIOR',    None,      None, 1.00),
+    ('PACK', 'NORMAL',    zona_a_id, None, 0.90),          # zona A
+    ('PACK', 'ESTUDANTE', zona_a_id, None, 0.70),
+    ('PACK', 'SENIOR',    zona_a_id, None, 0.70),
+    ('PACK', 'NORMAL',    zona_b_id, None, 0.90),          # zona B
+    ('PACK', 'ESTUDANTE', zona_b_id, None, 0.70),
+    ('PACK', 'SENIOR',    zona_b_id, None, 0.70),
+    # --- BILHETE (sem período) ---
+    ('BILHETE', 'NORMAL',    None,      None, 1.50),       # global / Rede completa
+    ('BILHETE', 'ESTUDANTE', None,      None, 1.20),
+    ('BILHETE', 'SENIOR',    None,      None, 1.20),
+    ('BILHETE', 'NORMAL',    zona_a_id, None, 1.00),       # zona A
+    ('BILHETE', 'ESTUDANTE', zona_a_id, None, 0.85),
+    ('BILHETE', 'SENIOR',    zona_a_id, None, 0.85),
+    ('BILHETE', 'NORMAL',    zona_b_id, None, 1.00),       # zona B
+    ('BILHETE', 'ESTUDANTE', zona_b_id, None, 0.85),
+    ('BILHETE', 'SENIOR',    zona_b_id, None, 0.85),
 ]
-for tipo, perfil, zona, preco in tarifas:
-    w['tarifario'].writerow([str(uuid.uuid4()), tipo, perfil, zona, preco])
+for tipo, perfil, zona, periodo, preco in tarifas:
+    w['tarifario'].writerow([str(uuid.uuid4()), tipo, perfil, zona, periodo, preco])
+
+# ── PACK TIERS ──────────────────────────────────────────────────────────────────
+# Quantidades de viagens disponíveis para compra de packs (geridas por admin via API).
+for v in [5, 10, 20]:
+    w['pack_tier'].writerow([str(uuid.uuid4()), v])
 
 # ── LEITORES (2-4 por linha) ─────────────────────────────────────────────────
 leitor_map = {}        # route_code -> [leitor_id, ...]
@@ -214,7 +220,7 @@ for route_code, rid in route_id_map.items():
 example_leitor_codigo = leitor_codigo_by_id[all_leitor_ids[0]] if all_leitor_ids else ''
 
 # ── UTENTES + TITULOS + TRANSACOES + MANIFEST ─────────────────────────────────
-# Cada utente: login determinístico + PASSE Rede Completa; fracção com PACK/BILHETE.
+# Cada utente: login determinístico + PASSE passe-tudo (sem zona → toda a rede); fracção com PACK/BILHETE.
 manifest_f = open(os.path.join(OUT_DIR, 'manifest.csv'), 'w', newline='', encoding='utf-8')
 manifest = csv.writer(manifest_f, lineterminator='\n')
 manifest.writerow(['email', 'password', 'titulo_id_passe', 'titulo_id_pack',
@@ -227,34 +233,34 @@ for i in range(NUM_UTENTES):
     perfil = random.choices(['NORMAL', 'ESTUDANTE', 'SENIOR'], weights=[80, 15, 5])[0]
     saldo = 50.00
     w['utente'].writerow([uid, f"LoadTest {i}", email, f"+3519{10000000 + i:08d}",
-                          PASSWORD_HASH, saldo, perfil, 0])
+                          PASSWORD_HASH, saldo, perfil, False, 0])
     # Carregamento inicial coerente com o saldo.
     w['transacao'].writerow([str(uuid.uuid4()), uid, saldo, 'CARREGAMENTO',
                              '2025-01-01 00:00:00', 'Carregamento inicial'])
 
-    # PASSE Rede Completa (ATIVO, validade longínqua).
+    # PASSE passe-tudo (sem zona → toda a rede, ATIVO, validade longínqua, período MENSAL para relatório).
     passe_id = str(uuid.uuid4())
     passe_tid_arr.append(passe_id)
     w['titulo_transporte'].writerow([passe_id, uid, 'ATIVO', 'PASSE', 0,
-                                     '2030-12-31', None, None])
-    w['titulo_zona'].writerow([passe_id, zona_rede_id])
+                                     '2030-12-31', None, None, 'MENSAL'])
+    # Sem linha em titulo_zona → zonasAbrangidas() = {} → passe-tudo.
 
     pack_id = ''
     if random.random() < PACK_FRAC:
         pack_id = str(uuid.uuid4())
         w['titulo_transporte'].writerow([pack_id, uid, 'ATIVO', 'PACK', 0,
-                                         '2030-12-31', 10, None])
+                                         '2030-12-31', 10, None, None])
         # Pack sem zona → passe-tudo (titulo_zona não recebe linha)
 
     bilhete_id = ''
     if random.random() < BILHETE_FRAC:
         bilhete_id = str(uuid.uuid4())
         w['titulo_transporte'].writerow([bilhete_id, uid, 'ATIVO', 'BILHETE', 0,
-                                         None, None, None])
-        w['titulo_zona'].writerow([bilhete_id, zona_rede_id])
+                                         None, None, None, None])
+        # Sem linha em titulo_zona → passe-tudo (mesma lógica do PASSE).
 
     manifest.writerow([email, PASSWORD_PLAIN, passe_id, pack_id, bilhete_id,
-                       'Rede Completa', example_leitor_codigo])
+                       'Rede completa', example_leitor_codigo])
 manifest_f.close()
 passe_tid_arr = np.array(passe_tid_arr, dtype=object)
 print(f"Utentes: {NUM_UTENTES} (+ títulos + manifest)")

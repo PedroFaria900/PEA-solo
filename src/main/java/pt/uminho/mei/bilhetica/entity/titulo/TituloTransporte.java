@@ -5,6 +5,7 @@ import lombok.*;
 import pt.uminho.mei.bilhetica.entity.Utente;
 import pt.uminho.mei.bilhetica.entity.ZonaTarifaria;
 import pt.uminho.mei.bilhetica.enums.EstadoTitulo;
+import pt.uminho.mei.bilhetica.enums.PeriodoPasse;
 import pt.uminho.mei.bilhetica.enums.TipoTitulo;
 
 import java.time.LocalDateTime;
@@ -78,10 +79,13 @@ public abstract class TituloTransporte {
     /** Viagens restantes para apresentação (null quando não aplicável). */
     public abstract Integer viagensRestantesResponse();
 
-    /** Descrição textual da área geográfica coberta (null/vazio quando não aplicável). */
+    /** Período do passe para apresentação (null quando não aplicável). Sobrepostos por TituloPasse. */
+    public PeriodoPasse periodoResponse() { return null; }
+
+    /** Descrição textual da área geográfica coberta. Vazio/null → "Rede completa" (passe-tudo). */
     public String areaGeografica() {
         if (zonas == null || zonas.isEmpty()) {
-            return null;
+            return "Rede completa";
         }
         return zonas.stream().map(ZonaTarifaria::getNome).collect(Collectors.joining(", "));
     }

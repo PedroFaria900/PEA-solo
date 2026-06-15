@@ -2,6 +2,7 @@ package pt.uminho.mei.bilhetica.entity.titulo;
 
 import jakarta.persistence.*;
 import lombok.*;
+import pt.uminho.mei.bilhetica.enums.PeriodoPasse;
 import pt.uminho.mei.bilhetica.enums.TipoTitulo;
 
 import java.time.LocalDate;
@@ -17,6 +18,11 @@ public class TituloPasse extends TituloTransporte {
 
     @Column
     private LocalDate validade;
+
+    /** Período de validade (MENSAL/ANUAL). Persistido para apresentação e relatório. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "periodo")
+    private PeriodoPasse periodo;
 
     @Override
     public TipoTitulo tipo() {
@@ -41,6 +47,11 @@ public class TituloPasse extends TituloTransporte {
     @Override
     public Integer viagensRestantesResponse() {
         return null;
+    }
+
+    @Override
+    public PeriodoPasse periodoResponse() {
+        return periodo;
     }
 
     @Override

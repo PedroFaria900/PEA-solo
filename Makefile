@@ -35,7 +35,7 @@ MINIKUBE_CPUS := 8
         seed-generate seed-local seed-k8s pip-install \
         snapshot-local restore-local snapshot-k8s restore-k8s \
         indexes-local indexes-k8s \
-        test-user \
+        test-user admin-user \
         k6-fase1 k6-fase2 k6-fase3 k6-validacao k6-all \
         clean clean-local clean-k8s
 
@@ -262,6 +262,12 @@ test-user: ## Register the default test user (maria@email.com)
 		-H "Content-Type: application/json" \
 		-d '{"nome":"Maria Silva","email":"maria@email.com","telemovel":"+351912345678","password":"password123"}'
 	@echo "✅ Test user: maria@email.com / password123"
+
+admin-user: ## Grant ADMIN role to maria@email.com on the local DB (run test-user first)
+	@echo "🔑 Granting admin to maria@email.com..."
+	@docker exec bilhetica-postgres psql -U $(DB_USER) -d $(DB_NAME) \
+		-c "UPDATE utente SET admin = true WHERE email = 'maria@email.com';"
+	@echo "✅ maria@email.com is now admin — log in again to get a fresh JWT"
 
 # ══════════════════════════════════════════════════════════════
 # K6 LOAD TESTS
