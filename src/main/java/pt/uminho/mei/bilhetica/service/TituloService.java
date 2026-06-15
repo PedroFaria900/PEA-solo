@@ -4,15 +4,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.uminho.mei.bilhetica.dto.*;
 import pt.uminho.mei.bilhetica.entity.Utente;
-import pt.uminho.mei.bilhetica.entity.Transacao;
 import pt.uminho.mei.bilhetica.entity.titulo.*;
 import pt.uminho.mei.bilhetica.enums.TipoTitulo;
-import pt.uminho.mei.bilhetica.enums.TipoTransacao;
 import pt.uminho.mei.bilhetica.repository.*;
 import pt.uminho.mei.bilhetica.service.titulo.TituloFactory;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,16 +21,16 @@ public class TituloService {
 
     private final TituloTransporteRepository tituloRepository;
     private final UtenteRepository utenteRepository;
-    private final TransacaoRepository transacaoRepository;
+    private final CarteiraService carteiraService;
     private final Map<TipoTitulo, TituloFactory> factories;
 
     public TituloService(TituloTransporteRepository tituloRepository,
                          UtenteRepository utenteRepository,
-                         TransacaoRepository transacaoRepository,
+                         CarteiraService carteiraService,
                          List<TituloFactory> factoryList) {
         this.tituloRepository = tituloRepository;
         this.utenteRepository = utenteRepository;
-        this.transacaoRepository = transacaoRepository;
+        this.carteiraService = carteiraService;
         this.factories = factoryList.stream()
             .collect(Collectors.toMap(TituloFactory::tipo, Function.identity()));
     }
@@ -72,23 +69,10 @@ public class TituloService {
 
         BigDecimal preco = factory.calcularPreco(request, utente);
 
-        if (utente.getSaldo().compareTo(preco) < 0) {
-            throw new RuntimeException("Saldo insuficiente. Necessário: " + preco
-                + ", disponível: " + utente.getSaldo());
-        }
-
-        utente.setSaldo(utente.getSaldo().subtract(preco));
-        utenteRepository.save(utente);
+        // saldo check + debit + registo de transação delegados ao CarteiraService
+        carteiraService.debitar(utente, preco, "Compra de " + request.getTipo());
 
         TituloTransporte titulo = tituloRepository.save(factory.criar(request, utente));
-
-        transacaoRepository.save(Transacao.builder()
-            .utente(utente)
-            .valor(preco.negate())
-            .tipo(TipoTransacao.COMPRA)
-            .momento(LocalDateTime.now())
-            .descricao("Compra de " + request.getTipo())
-            .build());
 
         return toResponse(titulo);
     }

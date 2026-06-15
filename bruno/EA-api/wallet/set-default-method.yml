@@ -1,0 +1,15 @@
+info:
+  name: set-default-method
+  type: http
+  seq: 8
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/carteira/metodos/{{metodoId}}/predefinido"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

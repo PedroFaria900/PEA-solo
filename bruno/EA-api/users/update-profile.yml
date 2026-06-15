@@ -1,19 +1,18 @@
 info:
-  name: add-balance
+  name: update-profile
   type: http
-  seq: 1
+  seq: 2
 
 http:
-  method: POST
-  url: "{{baseUrl}}/api/carteira/carregamentos"
+  method: PUT
+  url: "{{baseUrl}}/api/utentes/perfil"
   body:
     type: json
     data: |-
       {
-        "valor": 10.50,
-        "metodoId": null
+        "nome": "João Silva",
+        "telemovel": "912345678"
       }
-
   auth: inherit
 
 settings:

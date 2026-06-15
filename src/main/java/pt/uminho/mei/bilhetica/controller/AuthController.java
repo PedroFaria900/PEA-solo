@@ -30,7 +30,8 @@ public class AuthController {
             request.getNome(),
             request.getEmail(),
             request.getTelemovel(),
-            request.getPassword()
+            request.getPassword(),
+            request.getPerfil()
         );
         return ResponseEntity.status(201).body("Utente registado com sucesso");
     }
