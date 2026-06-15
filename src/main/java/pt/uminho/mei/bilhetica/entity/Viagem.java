@@ -7,7 +7,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "viagem", indexes = {
-    @Index(name = "idx_viagem_validacao", columnList = "validacao_id")
+    @Index(name = "idx_viagem_validacao", columnList = "validacao_id"),
+    @Index(name = "idx_viagem_momento",   columnList = "momento")
 })
 @Data
 @NoArgsConstructor
