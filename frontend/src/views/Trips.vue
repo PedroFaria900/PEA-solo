@@ -33,7 +33,11 @@
 
     <div class="tickets-list">
       
-      <div v-if="filteredTickets.length === 0" class="empty-state">
+      <div v-if="loading" class="empty-state">
+        <p style="color:#A3A8B0;">A carregar...</p>
+      </div>
+
+      <div v-else-if="filteredTickets.length === 0" class="empty-state">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#A3A8B0" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10"/><path d="M7 12h10"/><path d="M7 16h5"/></svg>
         <p>Não tens bilhetes nesta secção.</p>
         <button v-if="activeTab === 'ativo'" class="btn-comprar-agora" @click="router.push('/search')">
@@ -41,153 +45,140 @@
         </button>
       </div>
 
-      <div v-else class="ticket-card" v-for="ticket in filteredTickets" :key="ticket.id" :class="{ 'is-historic': activeTab === 'historico' }">
-        
-        <template v-if="ticket.type === 'viagem'">
-          <div class="ticket-header">
-            <div class="badge gray">Viagem Simples</div>
-            <span class="company">{{ ticket.companhia }}</span>
-          </div>
+      <!-- ATIVOS: títulos reais da API -->
+      <template v-else-if="activeTab === 'ativo'">
+        <div class="ticket-card" v-for="ticket in filteredTickets" :key="ticket.id">
           
-          <div class="ticket-body">
-            <div class="route-info">
-              <span class="city">{{ ticket.origem }}</span>
-              <span class="arrow">→</span>
-              <span class="city">{{ ticket.destino }}</span>
+          <!-- PASSE -->
+          <template v-if="ticket.tipo === 'PASSE'">
+            <div class="ticket-header">
+              <div class="badge green">Passe {{ ticket.periodo === 'ANUAL' ? 'Anual' : 'Mensal' }}</div>
+              <span class="company">{{ ticket.areaGeografica || 'Rede Geral' }}</span>
             </div>
-            <div class="datetime-info">
-              {{ ticket.data }} • {{ ticket.hora }}
+            <div class="ticket-body">
+              <h3 class="pass-name">Passe {{ ticket.periodo === 'ANUAL' ? 'Anual' : 'Mensal' }}</h3>
+              <p class="validity" v-if="ticket.expiraEm">Válido até {{ formatDate(ticket.expiraEm) }}</p>
+              <p class="validity" v-else>Aguarda ativação</p>
             </div>
-          </div>
-        </template>
+          </template>
 
-        <template v-else-if="ticket.type === 'passe'">
-          <div class="ticket-header">
-            <div class="badge green">Passe Mensal</div>
-            <span class="company">{{ ticket.zonas }}</span>
-          </div>
-          
-          <div class="ticket-body">
-            <h3 class="pass-name">{{ ticket.nome }}</h3>
-            <p class="validity">{{ ticket.validade }}</p>
-            
-            <div class="progress-container" v-if="activeTab === 'ativo'">
-              <div class="progress-labels">
-                <span>{{ ticket.diasRestantes }} dias restantes</span>
-                <span>{{ ticket.totalDias }} dias</span>
-              </div>
-              <div class="progress-bar">
-                <div class="progress-fill green-fill" :style="{ width: (ticket.diasRestantes / ticket.totalDias) * 100 + '%' }"></div>
+          <!-- PACK -->
+          <template v-else-if="ticket.tipo === 'PACK'">
+            <div class="ticket-header">
+              <div class="badge blue">Pack Viagens</div>
+              <span class="company">{{ ticket.areaGeografica || 'Rede Geral' }}</span>
+            </div>
+            <div class="ticket-body">
+              <h3 class="pass-name">Pack {{ ticket.viagensRestantes ?? '?' }} viagens restantes</h3>
+              <div class="progress-container">
+                <div class="progress-bar">
+                  <div class="progress-fill blue-fill" :style="{ width: Math.min(100, ((ticket.viagensRestantes ?? 0) / 20) * 100) + '%' }"></div>
+                </div>
               </div>
             </div>
-          </div>
-        </template>
+          </template>
 
-        <template v-else-if="ticket.type === 'pack'">
-          <div class="ticket-header">
-            <div class="badge blue">Pack Viagens</div>
-            <span class="company">{{ ticket.zonas }}</span>
-          </div>
-          
-          <div class="ticket-body">
-            <h3 class="pass-name">{{ ticket.nome }}</h3>
-            
-            <div class="progress-container" v-if="activeTab === 'ativo'">
-              <div class="progress-labels">
-                <span>{{ ticket.viagensRestantes }} viagens disponíveis</span>
-                <span>{{ ticket.totalViagens }} total</span>
-              </div>
-              <div class="progress-bar">
-                <div class="progress-fill blue-fill" :style="{ width: (ticket.viagensRestantes / ticket.totalViagens) * 100 + '%' }"></div>
-              </div>
+          <!-- BILHETE -->
+          <template v-else>
+            <div class="ticket-header">
+              <div class="badge gray">Bilhete Simples</div>
+              <span class="company">{{ ticket.areaGeografica || 'Rede Geral' }}</span>
             </div>
-          </div>
-        </template>
+            <div class="ticket-body">
+              <p class="validity">{{ ticket.estado === 'PENDENTE' ? 'Aguarda ativação' : (ticket.expiraEm ? 'Válido até ' + formatDate(ticket.expiraEm) : 'Ativo') }}</p>
+            </div>
+          </template>
 
-        <div class="ticket-footer">
-          <div v-if="activeTab === 'ativo'" class="qr-action">
-            <div class="qr-text">
-              <span class="qr-title">Mostrar ao Validador</span>
-              <span class="qr-subtitle">Clica para abrir o código QR</span>
+          <div class="ticket-footer">
+            <div class="qr-action">
+              <div class="qr-text">
+                <span class="qr-title">Mostrar ao Validador</span>
+                <span class="qr-subtitle">Clica para abrir o código QR</span>
+              </div>
+              <button class="qr-btn" @click="router.push('/simulator')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+              </button>
             </div>
-            <button class="qr-btn" @click="abrirQR(ticket)">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M11 9h2"/><path d="M11 15h2"/></svg>
-            </button>
-          </div>
-          
-          <div v-else class="historic-status">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7077" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            Bilhete Utilizado / Expirado
           </div>
         </div>
+      </template>
 
-      </div>
+      <!-- HISTÓRICO: viagens da API -->
+      <template v-else>
+        <div class="ticket-card is-historic" v-for="viagem in filteredTickets" :key="viagem.id">
+          <div class="ticket-header">
+            <div class="badge gray">Viagem</div>
+            <span class="company">{{ viagem.linha || 'Linha desconhecida' }}</span>
+          </div>
+          <div class="ticket-body">
+            <div class="datetime-info">{{ formatDate(viagem.momento) }}</div>
+          </div>
+          <div class="ticket-footer">
+            <div class="historic-status">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7077" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Viagem realizada
+            </div>
+          </div>
+        </div>
+      </template>
+
     </div>
 
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const router = useRouter()
 
 // Estado ativo das abas
 const activeTab = ref('ativo') // 'ativo' ou 'historico'
+const loading = ref(true)
 
-// Dados Mockados dos Bilhetes
-const tickets = ref([
-  {
-    id: 1,
-    type: 'viagem',
-    status: 'ativo',
-    origem: 'Guimarães',
-    destino: 'Braga',
-    data: '15 Jun 2026',
-    hora: '08:30 - 09:15',
-    companhia: 'Ave Mobilidade'
-  },
-  {
-    id: 2,
-    type: 'passe',
-    status: 'ativo',
-    nome: 'Passe Estudante (Sub23)',
-    zonas: 'Zonas Braga e Guimarães',
-    validade: 'Válido até 30 Jun 2026',
-    diasRestantes: 16,
-    totalDias: 30
-  },
-  {
-    id: 3,
-    type: 'pack',
-    status: 'ativo',
-    nome: 'Pack 10 Viagens',
-    zonas: 'Guimarães Urbano',
-    viagensRestantes: 3,
-    totalViagens: 10
-  },
-  {
-    id: 4,
-    type: 'viagem',
-    status: 'historico',
-    origem: 'Porto (Campanhã)',
-    destino: 'Guimarães',
-    data: '10 Jun 2026',
-    hora: '18:00 - 19:10',
-    companhia: 'Rede Expresso'
-  }
-])
+// Dados reais da API
+const tickets = ref([])
+const viagens = ref([])
 
-// Computed Property para filtrar bilhetes com base na aba selecionada
+// Tickets ativos (passe, pack, bilhete com estado ATIVO ou PENDENTE)
+const activeTickets = computed(() =>
+  tickets.value.filter(t => t.estado === 'ATIVO' || t.estado === 'PENDENTE')
+)
+
+// Historico: viagens realizadas
 const filteredTickets = computed(() => {
-  return tickets.value.filter(t => t.status === activeTab.value)
+  if (activeTab.value === 'ativo') return activeTickets.value
+  return viagens.value
 })
 
-// Função simulada para abrir o QR Code
-const abrirQR = (ticket) => {
-  alert(`A abrir o código QR para: ${ticket.type === 'viagem' ? ticket.destino : ticket.nome}`)
+const ticketTypeLabel = (t) => {
+  const map = { PASSE: 'Passe', PACK: 'Pack', BILHETE: 'Bilhete' }
+  return map[t.tipo] || t.tipo
 }
+
+const formatDate = (dt) => {
+  if (!dt) return '-'
+  return new Date(dt).toLocaleString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+// Carrega dados ao montar
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const [titRes, viRes] = await Promise.all([
+      axios.get('/api/titulos'),
+      axios.get('/api/viagens')
+    ])
+    tickets.value = titRes.data || []
+    viagens.value = viRes.data || []
+  } catch { /* ignore */ } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchData)
 </script>
 
 <style scoped>

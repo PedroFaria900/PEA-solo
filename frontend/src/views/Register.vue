@@ -58,8 +58,10 @@
         <span v-if="tipoError" class="error-message">Selecione o tipo de utente</span>
       </div>
 
+      <div v-if="apiError" class="error-message" style="text-align:center; margin-bottom: 4px;">{{ apiError }}</div>
+
       <div class="actions">
-        <button type="submit" class="btn-primary">Criar Conta</button>
+        <button type="submit" class="btn-primary" :disabled="loading">{{ loading ? 'A criar conta...' : 'Criar Conta' }}</button>
       </div>
 
       <div class="login-link">
@@ -74,6 +76,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const router = useRouter()
 
@@ -91,6 +94,8 @@ const confirmPasswordError = ref(false)
 const confirmPasswordErrorMsg = ref('')
 const phoneError = ref(false)
 const tipoError = ref(false)
+const apiError = ref('')
+const loading = ref(false)
 
 const tipoOpcoes = [
   { value: 'NORMAL',    label: 'Normal'},
@@ -104,13 +109,14 @@ const checkPasswords = () => {
   }
 }
 
-const handleRegister = () => {
+const handleRegister = async () => {
   nameError.value = false
   emailError.value = false
   passwordError.value = false
   confirmPasswordError.value = false
   phoneError.value = false
   tipoError.value = false
+  apiError.value = ''
   let hasError = false
 
   if (!name.value)  { nameError.value = true;  hasError = true }
@@ -129,10 +135,22 @@ const handleRegister = () => {
     hasError = true
   }
 
-  if (!hasError) {
-    console.log('Registar:', { name: name.value, email: email.value, phone: phone.value, tipo: tipo.value })
-    alert('Conta criada com sucesso! (Simulação)')
+  if (hasError) return
+
+  loading.value = true
+  try {
+    await axios.post('/api/auth/register', {
+      nome: name.value,
+      email: email.value,
+      telemovel: phone.value,
+      password: password.value,
+      perfil: tipo.value
+    })
     router.push({ name: 'Login' })
+  } catch (err) {
+    apiError.value = err.response?.data?.message || err.response?.data || 'Erro ao criar conta. Tente novamente.'
+  } finally {
+    loading.value = false
   }
 }
 </script>

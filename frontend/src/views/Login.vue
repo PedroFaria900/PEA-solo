@@ -14,7 +14,7 @@
           id="email" 
           v-model="email" 
           type="email" 
-          @input="emailError = false"
+          @input="emailError = false; apiError = ''"
         />
         <span v-if="emailError" class="error-message">Email é necessário</span>
       </div>
@@ -25,13 +25,20 @@
           id="password" 
           v-model="password" 
           type="password" 
-          @input="passwordError = false"
+          @input="passwordError = false; apiError = ''"
         />
         <span v-if="passwordError" class="error-message">Password é necessário</span>
       </div>
 
+      <div v-if="apiError" class="api-error-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ apiError }}
+      </div>
+
       <div class="actions">
-        <button type="submit" class="btn-primary">Entrar</button>
+        <button type="submit" class="btn-primary" :disabled="loading">{{ loading ? 'A entrar...' : 'Entrar' }}</button>
         <router-link to="/register" class="btn-secondary">Criar Conta</router-link>
       </div>
 
@@ -47,9 +54,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../store/auth' // Importa a tua store
+import { useAuthStore } from '../store/auth'
 
-// Inicializamos o router e a store
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -57,19 +63,25 @@ const email = ref('')
 const password = ref('')
 const emailError = ref(false)
 const passwordError = ref(false)
+const apiError = ref('')
+const loading = ref(false)
 
-const handleLogin = () => {
+const handleLogin = async () => {
   emailError.value = !email.value
   passwordError.value = !password.value
+  apiError.value = ''
   if (!email.value || !password.value) return
 
-  // Mock — usa setToken para persistir no localStorage
-  authStore.setToken('token-falso-de-teste')
-  authStore.user = { nome: 'André Silva', email: email.value, saldo: 18.75 }
-
-  router.push({ name: 'Profile' })
+  loading.value = true
+  try {
+    await authStore.login(email.value, password.value)
+    router.push('/profile')
+  } catch (err) {
+    apiError.value = authStore.error || 'Email ou password incorretos.'
+  } finally {
+    loading.value = false
+  }
 }
-
 </script>
 
 <style scoped>
@@ -159,6 +171,21 @@ const handleLogin = () => {
   font-size: 13px;
   margin-top: 6px;
   margin-left: 4px;
+}
+
+.api-error-box {
+  background-color: #FEECEB;
+  color: #D32F2F;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  border: 1px solid #F8D7DA;
 }
 
 /* Botões */

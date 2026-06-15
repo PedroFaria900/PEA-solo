@@ -46,22 +46,27 @@
       </div>
 
       <div class="trips-card">
-        <div 
-          v-for="(trip, index) in recentTrips" 
-          :key="trip.id" 
-          class="trip-item"
-          :class="{ 'border-b': index !== recentTrips.length - 1 }"
-        >
-          <div class="trip-icon" :class="trip.usedPass ? 'blue-bg-solid' : 'dark-bg'">
-            <svg v-if="trip.usedPass" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="1.5"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h4"/></svg>
-            <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10"/><path d="M7 11h10"/><path d="M7 15h5"/></svg>
+        <template v-if="recentTrips.length > 0">
+          <div 
+            v-for="(trip, index) in recentTrips" 
+            :key="trip.id" 
+            class="trip-item"
+            :class="{ 'border-b': index !== recentTrips.length - 1 }"
+          >
+            <div class="trip-icon" :class="trip.usedPass ? 'blue-bg-solid' : 'dark-bg'">
+              <svg v-if="trip.usedPass" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="1.5"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h4"/></svg>
+              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10"/><path d="M7 11h10"/><path d="M7 15h5"/></svg>
+            </div>
+            <div class="trip-info">
+              <div class="trip-route">{{ trip.origin }} <span class="arrow">→</span> {{ trip.destination }}</div>
+              <div class="trip-time">{{ trip.date }}</div>
+            </div>
+            <div v-if="trip.usedPass" class="trip-badge-blue">Passe</div>
+            <div v-else class="trip-price">{{ trip.price.toFixed(2).replace('.', ',') }}€</div>
           </div>
-          <div class="trip-info">
-            <div class="trip-route">{{ trip.origin }} <span class="arrow">→</span> {{ trip.destination }}</div>
-            <div class="trip-time">{{ trip.date }}</div>
-          </div>
-          <div v-if="trip.usedPass" class="trip-badge-blue">Passe</div>
-          <div v-else class="trip-price">{{ trip.price.toFixed(2).replace('.', ',') }}€</div>
+        </template>
+        <div v-else class="empty-trips">
+          Ainda não fizeste nenhuma viagem.
         </div>
       </div>
     </section>
@@ -76,9 +81,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
+import axios from 'axios'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -92,16 +98,36 @@ const userInitials = computed(() => {
 })
 const saldo = computed(() => authStore.userSaldo)
 
-// ── Mock — quando ligar o backend, substituir por: GET /api/viagens ──
-const hasActivePass = ref(true)
-const allTrips = ref([
-  { id: 1, origin: 'Viana',     destination: 'Alameda',   date: '2026-06-14T08:42:00', price: 1.50, usedPass: false },
-  { id: 2, origin: 'Guimarães', destination: 'Vila Real', date: '2026-06-13T18:10:00', price: 0,    usedPass: true  },
-  { id: 3, origin: 'Braga',     destination: 'Porto',     date: '2026-06-08T09:05:00', price: 1.50, usedPass: false },
-  { id: 4, origin: 'Porto',     destination: 'Braga',     date: '2026-06-07T17:30:00', price: 1.50, usedPass: false },
-  { id: 5, origin: 'Alameda',   destination: 'Viana',     date: '2026-06-05T08:15:00', price: 1.50, usedPass: false },
-  { id: 6, origin: 'Vila Real', destination: 'Guimarães', date: '2026-05-28T09:00:00', price: 0,    usedPass: true  },
-])
+// ── Estado API ──
+const hasActivePass = ref(false)
+const allTrips = ref([])
+
+onMounted(async () => {
+  try {
+    const [viagensRes, titulosRes] = await Promise.all([
+      axios.get('/api/viagens'),
+      axios.get('/api/titulos')
+    ])
+    
+    // Tratar viagens
+    allTrips.value = viagensRes.data.map(v => {
+      const parts = v.linha ? v.linha.split(' - ') : ['Desconhecida']
+      return {
+        id: v.id,
+        origin: parts[0] || 'Desconhecida',
+        destination: parts[1] || '',
+        date: v.momento,
+        price: v.precoPago || 0,
+        usedPass: v.tituloUtilizado && v.tituloUtilizado.tipo === 'PASSE'
+      }
+    })
+
+    // Tem passe ativo?
+    hasActivePass.value = titulosRes.data.some(t => t.tipo === 'PASSE' && t.estado === 'ATIVO')
+  } catch (err) {
+    console.error('Erro ao carregar dados do perfil', err)
+  }
+})
 
 // Derivado do array — não hardcoded
 const tripsThisMonth = computed(() => {
@@ -368,9 +394,16 @@ const handleLogout = () => {
 }
 
 .trip-price {
+  font-size: 16px;
   font-weight: 700;
-  font-size: 15px;
-  color: #15171A;
+  color: #1A1A1A;
+}
+
+.empty-trips {
+  padding: 24px;
+  text-align: center;
+  color: #A3A8B0;
+  font-size: 14px;
 }
 
 .trip-badge-blue {

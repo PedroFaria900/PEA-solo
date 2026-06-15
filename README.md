@@ -18,7 +18,7 @@ make clean-local
 make seed-generate
 
 # C. Iniciar a infraestrutura postgres + redis temporariamente para popular
-make dev-infra
+make dev
 
 # D. Popular a base de dados
 make seed-local

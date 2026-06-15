@@ -50,7 +50,11 @@ export const useAuthStore = defineStore('auth', {
         this.loading = false
         return true
       } catch (err) {
-        this.error = err.response?.data?.message || 'Email ou palavra-passe incorretos'
+        if (typeof err.response?.data === 'string') {
+          this.error = err.response.data === 'Bad credentials' ? 'Email ou palavra-passe incorretos' : err.response.data
+        } else {
+          this.error = err.response?.data?.message || 'Email ou palavra-passe incorretos'
+        }
         this.loading = false
         throw err
       }
