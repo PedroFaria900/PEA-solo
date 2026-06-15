@@ -1,9 +1,13 @@
 package pt.uminho.mei.bilhetica.controller;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import pt.uminho.mei.bilhetica.dto.TransacaoResponse;
 import pt.uminho.mei.bilhetica.entity.Transacao;
 import pt.uminho.mei.bilhetica.entity.Utente;
 import pt.uminho.mei.bilhetica.enums.TipoTransacao;
@@ -12,7 +16,9 @@ import pt.uminho.mei.bilhetica.repository.UtenteRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/carteira")
@@ -60,5 +66,28 @@ public class CarteiraController {
             .build());
 
         return ResponseEntity.ok(Map.of("saldo", utente.getSaldo()));
+    }
+
+    @GetMapping("/transacoes")
+    public ResponseEntity<List<TransacaoResponse>> historico(
+            @AuthenticationPrincipal UserDetails user,
+            @PageableDefault(size = 20, sort = "momento",
+                             direction = Sort.Direction.DESC) Pageable pageable) {
+        Utente utente = utenteRepository.findByEmail(user.getUsername())
+            .orElseThrow(() -> new RuntimeException("Utente não encontrado"));
+
+        List<TransacaoResponse> result = transacaoRepository
+            .findByUtenteId(utente.getId(), pageable)
+            .stream()
+            .map(t -> TransacaoResponse.builder()
+                .id(t.getId())
+                .valor(t.getValor())
+                .tipo(t.getTipo())
+                .momento(t.getMomento())
+                .descricao(t.getDescricao())
+                .build())
+            .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
     }
 }

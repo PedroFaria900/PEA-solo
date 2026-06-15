@@ -52,9 +52,9 @@ export default function () {
 
   sleep(0.5);
 
-  // 3. Estatísticas da rede
-  const redeRes = http.get(`${BASE_URL}/api/rede/estatisticas`, { headers });
-  check(redeRes, { 'estatísticas 200': (r) => r.status === 200 });
+  // 3. Linha catalogue
+  const redeRes = http.get(`${BASE_URL}/api/linhas`, { headers });
+  check(redeRes, { 'linhas 200': (r) => r.status === 200 });
 
   sleep(1);
 }

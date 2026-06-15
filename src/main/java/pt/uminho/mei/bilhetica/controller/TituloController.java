@@ -29,8 +29,9 @@ public class TituloController {
 
     @GetMapping("/{id}")
     public ResponseEntity<TituloResponse> detalhe(
+            @AuthenticationPrincipal UserDetails user,
             @PathVariable UUID id) {
-        return ResponseEntity.ok(tituloService.detalhe(id));
+        return ResponseEntity.ok(tituloService.detalhe(id, user.getUsername()));
     }
 
     @PostMapping

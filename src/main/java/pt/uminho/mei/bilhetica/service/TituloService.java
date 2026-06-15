@@ -48,9 +48,13 @@ public class TituloService {
             .collect(Collectors.toList());
     }
 
-    public TituloResponse detalhe(UUID id) {
-        return toResponse(tituloRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Título não encontrado")));
+    public TituloResponse detalhe(UUID id, String email) {
+        TituloTransporte titulo = tituloRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Título não encontrado"));
+        if (!titulo.getUtente().getEmail().equals(email)) {
+            throw new RuntimeException("Título não encontrado");
+        }
+        return toResponse(titulo);
     }
 
     @Transactional

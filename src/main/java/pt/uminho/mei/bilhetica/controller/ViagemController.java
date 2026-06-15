@@ -36,7 +36,8 @@ public class ViagemController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ViagemResponse> detalhe(
+            @AuthenticationPrincipal UserDetails user,
             @PathVariable UUID id) {
-        return ResponseEntity.ok(viagemService.detalhe(id));
+        return ResponseEntity.ok(viagemService.detalhe(id, user.getUsername()));
     }
 }

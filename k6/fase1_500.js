@@ -54,8 +54,8 @@ export default function (data) {
     'Authorization': `Bearer ${token}`,
   };
 
-  const redeRes = http.get(`${BASE_URL}/api/rede/estatisticas`, { headers });
-  check(redeRes, { 'rede 200': (r) => r.status === 200 });
+  const redeRes = http.get(`${BASE_URL}/api/linhas`, { headers });
+  check(redeRes, { 'linhas 200': (r) => r.status === 200 });
 
   sleep(0.5);
 

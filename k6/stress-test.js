@@ -13,12 +13,12 @@ const NUM_TOKENS = __ENV.TOKENS
 
 // Custom trends per endpoint group — recorded only during the steady phase
 // so warmup latency doesn't pollute the reported numbers.
-const tRede     = new Trend('rede_latency_steady',       true);
-const tEstLinha = new Trend('est_linha_latency_steady',  true);
-const tEstPar   = new Trend('est_paragem_latency_steady', true);
-const tViagens  = new Trend('viagens_latency_steady',    true);
-const tTitulos  = new Trend('titulos_latency_steady',    true);
-const tLinhas   = new Trend('linhas_latency_steady',     true);
+const tLinhas       = new Trend('linhas_latency_steady',        true);
+const tLinhaPar     = new Trend('linha_paragens_latency_steady', true);
+const tParagem      = new Trend('paragem_latency_steady',       true);
+const tViagens      = new Trend('viagens_latency_steady',       true);
+const tTitulos      = new Trend('titulos_latency_steady',       true);
+const tPublicLinhas = new Trend('public_linhas_latency_steady', true);
 
 export const options = {
   setupTimeout: '5m',
@@ -45,12 +45,12 @@ export const options = {
   },
   thresholds: {
     // Enforce thresholds on the steady-state phase only
-    'http_req_duration{phase:steady,endpoint:rede}':        ['p(95)<3000'],
-    'http_req_duration{phase:steady,endpoint:est_linha}':   ['p(95)<3000'],
-    'http_req_duration{phase:steady,endpoint:est_paragem}': ['p(95)<3000'],
-    'http_req_duration{phase:steady,endpoint:viagens}':     ['p(95)<3000'],
-    'http_req_duration{phase:steady,endpoint:titulos}':     ['p(95)<3000'],
-    'http_req_duration{phase:steady,endpoint:linhas}':      ['p(95)<3000'],
+    'http_req_duration{phase:steady,endpoint:linhas}':        ['p(95)<3000'],
+    'http_req_duration{phase:steady,endpoint:linha_paragens}':['p(95)<3000'],
+    'http_req_duration{phase:steady,endpoint:paragem}':       ['p(95)<3000'],
+    'http_req_duration{phase:steady,endpoint:viagens}':       ['p(95)<3000'],
+    'http_req_duration{phase:steady,endpoint:titulos}':       ['p(95)<3000'],
+    'http_req_duration{phase:steady,endpoint:public_linhas}': ['p(95)<3000'],
     'http_req_failed{phase:steady}': ['rate<0.05'],
     'checks{phase:steady}':         ['rate>0.99'],
   },
@@ -71,38 +71,38 @@ function doRequests(data, recordSteady) {
   };
   const { linhaIds, paragemIds } = data.ids;
 
-  // ── 1. Network-wide aggregate (heaviest — UC3 analytics) ─────────────────
-  const redeRes = http.get(`${BASE_URL}/api/admin/estatisticas/rede`, {
+  // ── 1. Public linha catalogue (network listing) ───────────────────────────
+  const linhasRes = http.get(`${BASE_URL}/api/linhas`, {
     headers,
-    tags: { endpoint: 'rede' },
+    tags: { endpoint: 'linhas' },
   });
-  check(redeRes, {
-    'rede 200':         r => r.status === 200,
-    'rede json valido': r => { try { return redeRes.json() && typeof redeRes.json() === 'object'; } catch { return false; } },
+  check(linhasRes, {
+    'linhas 200':         r => r.status === 200,
+    'linhas json valido': r => { try { return Array.isArray(linhasRes.json()); } catch { return false; } },
   });
-  if (recordSteady) tRede.add(redeRes.timings.duration);
+  if (recordSteady) tLinhas.add(linhasRes.timings.duration);
 
   sleep(0.1 + Math.random() * 0.1);
 
-  // ── 2. Stats by linha ─────────────────────────────────────────────────────
+  // ── 2. Stops for a linha (ordered stop sequence) ─────────────────────────
   const linhaId = linhaIds[__VU % linhaIds.length];
-  const estLinhaRes = http.get(`${BASE_URL}/api/admin/estatisticas/linhas/${linhaId}`, {
+  const linhaParRes = http.get(`${BASE_URL}/api/linhas/${linhaId}/paragens`, {
     headers,
-    tags: { endpoint: 'est_linha' },
+    tags: { endpoint: 'linha_paragens' },
   });
-  check(estLinhaRes, { 'est_linha 200': r => r.status === 200 });
-  if (recordSteady) tEstLinha.add(estLinhaRes.timings.duration);
+  check(linhaParRes, { 'linha_paragens 200': r => r.status === 200 });
+  if (recordSteady) tLinhaPar.add(linhaParRes.timings.duration);
 
   sleep(0.1 + Math.random() * 0.1);
 
-  // ── 3. Stats by paragem ───────────────────────────────────────────────────
+  // ── 3. Stop detail ────────────────────────────────────────────────────────
   const paragemId = paragemIds[__VU % paragemIds.length];
-  const estParRes = http.get(`${BASE_URL}/api/admin/estatisticas/paragens/${paragemId}`, {
+  const paragemRes = http.get(`${BASE_URL}/api/paragens/${paragemId}`, {
     headers,
-    tags: { endpoint: 'est_paragem' },
+    tags: { endpoint: 'paragem' },
   });
-  check(estParRes, { 'est_paragem 200': r => r.status === 200 });
-  if (recordSteady) tEstPar.add(estParRes.timings.duration);
+  check(paragemRes, { 'paragem 200': r => r.status === 200 });
+  if (recordSteady) tParagem.add(paragemRes.timings.duration);
 
   sleep(0.1 + Math.random() * 0.1);
 
@@ -129,13 +129,15 @@ function doRequests(data, recordSteady) {
 
   sleep(0.1 + Math.random() * 0.1);
 
-  // ── 6. Public linha catalogue (light, cache-friendly) ────────────────────
-  const linhasRes = http.get(`${BASE_URL}/api/linhas`, {
+  // ── 6. Route suggestion (direct-route read — network query) ───────────────
+  // Uses first two sampled stops to find routes between them
+  const [pIdA, pIdB] = paragemIds;
+  const rotaRes = http.get(`${BASE_URL}/api/rotas?origemId=${pIdA}&destinoId=${pIdB}`, {
     headers,
-    tags: { endpoint: 'linhas' },
+    tags: { endpoint: 'public_linhas' },
   });
-  check(linhasRes, { 'linhas 200': r => r.status === 200 });
-  if (recordSteady) tLinhas.add(linhasRes.timings.duration);
+  check(rotaRes, { 'rotas 200': r => r.status === 200 });
+  if (recordSteady) tPublicLinhas.add(rotaRes.timings.duration);
 
   // End-of-iteration think time with jitter to avoid synchronized pulsing
   sleep(0.4 + Math.random() * 0.2);

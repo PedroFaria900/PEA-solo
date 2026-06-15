@@ -25,12 +25,12 @@ export const options = {
     },
   },
   thresholds: {
-    'http_req_duration{endpoint:rede}':        ['p(95)<3000', 'p(99)<5000'],
-    'http_req_duration{endpoint:est_linha}':   ['p(95)<3000', 'p(99)<5000'],
-    'http_req_duration{endpoint:est_paragem}': ['p(95)<3000', 'p(99)<5000'],
-    'http_req_duration{endpoint:viagens}':     ['p(95)<3000', 'p(99)<5000'],
-    'http_req_duration{endpoint:titulos}':     ['p(95)<3000', 'p(99)<5000'],
-    'http_req_duration{endpoint:linhas}':      ['p(95)<3000', 'p(99)<5000'],
+    'http_req_duration{endpoint:linhas}':         ['p(95)<3000', 'p(99)<5000'],
+    'http_req_duration{endpoint:linha_paragens}': ['p(95)<3000', 'p(99)<5000'],
+    'http_req_duration{endpoint:paragem}':        ['p(95)<3000', 'p(99)<5000'],
+    'http_req_duration{endpoint:viagens}':        ['p(95)<3000', 'p(99)<5000'],
+    'http_req_duration{endpoint:titulos}':        ['p(95)<3000', 'p(99)<5000'],
+    'http_req_duration{endpoint:rotas}':          ['p(95)<3000', 'p(99)<5000'],
     'http_req_failed':    ['rate<0.05'],
     'checks':             ['rate>0.99'],
     // Alert if k6 can't keep up with the requested rate
@@ -59,30 +59,30 @@ export default function (data) {
   const roll = Math.random();
 
   if (roll < 0.20) {
-    // Heavy network-wide aggregate (UC3 analytics)
-    const res = http.get(`${BASE_URL}/api/admin/estatisticas/rede`, {
+    // Public linha catalogue (network listing)
+    const res = http.get(`${BASE_URL}/api/linhas`, {
       headers,
-      tags: { endpoint: 'rede' },
+      tags: { endpoint: 'linhas' },
     });
-    check(res, { 'rede 200': r => r.status === 200 });
+    check(res, { 'linhas 200': r => r.status === 200 });
 
   } else if (roll < 0.35) {
-    // Stats by linha (analytics per route)
+    // Stops for a linha (ordered stop sequence per route)
     const id = linhaIds[Math.floor(Math.random() * linhaIds.length)];
-    const res = http.get(`${BASE_URL}/api/admin/estatisticas/linhas/${id}`, {
+    const res = http.get(`${BASE_URL}/api/linhas/${id}/paragens`, {
       headers,
-      tags: { endpoint: 'est_linha' },
+      tags: { endpoint: 'linha_paragens' },
     });
-    check(res, { 'est_linha 200': r => r.status === 200 });
+    check(res, { 'linha_paragens 200': r => r.status === 200 });
 
   } else if (roll < 0.50) {
-    // Stats by paragem (analytics per stop)
+    // Stop detail
     const id = paragemIds[Math.floor(Math.random() * paragemIds.length)];
-    const res = http.get(`${BASE_URL}/api/admin/estatisticas/paragens/${id}`, {
+    const res = http.get(`${BASE_URL}/api/paragens/${id}`, {
       headers,
-      tags: { endpoint: 'est_paragem' },
+      tags: { endpoint: 'paragem' },
     });
-    check(res, { 'est_paragem 200': r => r.status === 200 });
+    check(res, { 'paragem 200': r => r.status === 200 });
 
   } else if (roll < 0.65) {
     // Per-user trip history (SIC/UC2 user history view)
@@ -101,11 +101,12 @@ export default function (data) {
     check(res, { 'titulos 200': r => r.status === 200 });
 
   } else {
-    // Light public línea catalogue (no aggregation, cache-friendly)
-    const res = http.get(`${BASE_URL}/api/linhas`, {
+    // Route suggestion between two sampled stops (direct-route network query)
+    const [pIdA, pIdB] = paragemIds;
+    const res = http.get(`${BASE_URL}/api/rotas?origemId=${pIdA}&destinoId=${pIdB}`, {
       headers,
-      tags: { endpoint: 'linhas' },
+      tags: { endpoint: 'rotas' },
     });
-    check(res, { 'linhas 200': r => r.status === 200 });
+    check(res, { 'rotas 200': r => r.status === 200 });
   }
 }

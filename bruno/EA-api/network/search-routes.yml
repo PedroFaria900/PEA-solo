@@ -1,8 +1,0 @@
-info:
-  name: search-routes
-  type: http
-  seq: 6
-http:
-  method: GET
-  url: "{{baseUrl}}/api/rotas/pesquisar?origem=123e4567-e89b-12d3-a456-426614174000&destino=123e4567-e89b-12d3-a456-426614174001"
-  auth: inherit

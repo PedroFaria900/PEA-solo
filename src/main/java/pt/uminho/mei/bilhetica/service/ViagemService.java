@@ -33,9 +33,14 @@ public class ViagemService {
             .collect(Collectors.toList());
     }
 
-    public ViagemResponse detalhe(UUID id) {
-        return toResponse(viagemRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Viagem não encontrada")));
+    public ViagemResponse detalhe(UUID id, String email) {
+        Viagem viagem = viagemRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Viagem não encontrada"));
+        String owner = viagem.getValidacao().getTitulo().getUtente().getEmail();
+        if (!owner.equals(email)) {
+            throw new RuntimeException("Viagem não encontrada");
+        }
+        return toResponse(viagem);
     }
 
     private ViagemResponse toResponse(Viagem v) {
